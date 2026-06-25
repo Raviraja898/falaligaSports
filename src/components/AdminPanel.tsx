@@ -14,7 +14,8 @@ import {
   deleteOwner,
   restartPlayerBid,
   updateOwnerPassword,
-  rescheduleTiedPlayer
+  rescheduleTiedPlayer,
+  setAutoRandomMode
 } from '../dbHelper';
 import { PlayerCard, TieBreakerTool } from './CommonUI';
 import { 
@@ -234,6 +235,67 @@ export default function AdminPanel({ players, owners, bids, auctionState, onLogo
     }
   };
 
+  // Toggle auto random mode
+  const handleToggleAutoRandom = async (enabled: boolean) => {
+    try {
+      await setAutoRandomMode(enabled);
+    } catch (err) {
+      console.error('Failed to toggle auto random mode:', err);
+    }
+  };
+
+  // Start auto random draft from scratch
+  const handleStartAutoRandomDraft = async () => {
+    const remainingPlayers = players.filter(p => p.status === 'AVAILABLE' || p.status === 'UNSOLD');
+    if (remainingPlayers.length === 0) {
+      alert('All players are drafted or completed!');
+      return;
+    }
+    
+    try {
+      await setAutoRandomMode(true);
+      if (!auctionState.activePlayerId) {
+        const randomIndex = Math.floor(Math.random() * remainingPlayers.length);
+        const randomPlayer = remainingPlayers[randomIndex];
+        await setActivePlayer(randomPlayer.id);
+      }
+    } catch (err) {
+      console.error('Failed to start auto random draft:', err);
+    }
+  };
+
+  // Auto random mode driver effect
+  useEffect(() => {
+    if (auctionState.autoRandomMode && auctionState.status === 'IDLE' && !auctionState.activePlayerId) {
+      const remainingPlayers = players.filter(p => p.status === 'AVAILABLE' || p.status === 'UNSOLD');
+      
+      if (remainingPlayers.length > 0) {
+        const randomIndex = Math.floor(Math.random() * remainingPlayers.length);
+        const randomPlayer = remainingPlayers[randomIndex];
+        
+        const timer = setTimeout(async () => {
+          try {
+            await setActivePlayer(randomPlayer.id);
+          } catch (err) {
+            console.error('Error auto-starting next random player:', err);
+          }
+        }, 1500);
+        
+        return () => clearTimeout(timer);
+      } else {
+        const disableAuto = async () => {
+          try {
+            await setAutoRandomMode(false);
+          } catch (err) {
+            console.error('Error disabling auto random mode:', err);
+          }
+        };
+        disableAuto();
+      }
+    }
+  }, [auctionState.autoRandomMode, auctionState.status, auctionState.activePlayerId, players]);
+
+
   // Find active player
   const activePlayer = players.find(p => p.id === auctionState.activePlayerId);
 
@@ -415,18 +477,64 @@ export default function AdminPanel({ players, owners, bids, auctionState, onLogo
               <CircleDot className="w-4 h-4 text-amber-500" /> Currently Auctioning
             </h2>
             {activePlayer ? (
-              <PlayerCard player={activePlayer} owners={owners} isActive={true} />
+              <div className="space-y-4">
+                <PlayerCard player={activePlayer} owners={owners} isActive={true} />
+                {auctionState.autoRandomMode && (
+                  <div className="bg-amber-500/10 border border-amber-500/20 rounded-xl p-4 flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-2 text-xs font-bold text-amber-400">
+                      <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
+                      Auto-Random Draft Active
+                    </div>
+                    <button
+                      onClick={() => handleToggleAutoRandom(false)}
+                      className="px-3 py-1.5 bg-rose-600/20 hover:bg-rose-600 border border-rose-500/30 hover:border-rose-500 text-rose-400 hover:text-white rounded-lg text-[10px] font-black uppercase transition-all cursor-pointer"
+                    >
+                      🛑 Disable Auto-Pilot
+                    </button>
+                  </div>
+                )}
+              </div>
             ) : (
-              <div className="bg-[#121212]/50 border border-dashed border-white/10 rounded-2xl p-10 text-center text-slate-400">
-                <Layers className="w-8 h-8 text-slate-600 mx-auto mb-3" />
-                <p className="text-sm font-semibold">No player currently under auction</p>
-                <p className="text-xs text-slate-500 mt-1">Select a player from the Players Board tab to start bidding.</p>
-                <button
-                  onClick={() => setActiveTab('players')}
-                  className="mt-4 px-4 py-2 bg-amber-500 hover:bg-amber-400 text-[#0a0a0a] rounded-xl text-xs font-bold transition-all shadow-md inline-flex items-center gap-1.5 cursor-pointer"
-                >
-                  <Play className="w-3.5 h-3.5 fill-current" /> Go to Players Board
-                </button>
+              <div className="space-y-4">
+                {auctionState.autoRandomMode ? (
+                  <div className="bg-[#121212]/50 border-2 border-dashed border-amber-500/30 rounded-2xl p-10 text-center text-slate-400 relative overflow-hidden">
+                    <div className="absolute inset-0 bg-amber-500/[0.01] pointer-events-none" />
+                    <Sparkles className="w-8 h-8 text-amber-500 mx-auto mb-3 animate-spin" style={{ animationDuration: '3s' }} />
+                    <p className="text-sm font-black text-amber-400 uppercase tracking-widest">Selecting Next Player...</p>
+                    <p className="text-xs text-slate-500 mt-2 max-w-xs mx-auto">
+                      Choosing a random competitor from the remaining {players.filter(p => p.status === 'AVAILABLE' || p.status === 'UNSOLD').length} available players in the pool.
+                    </p>
+                    <button
+                      onClick={() => handleToggleAutoRandom(false)}
+                      className="mt-5 px-4 py-2 bg-rose-600 hover:bg-rose-500 text-white rounded-xl text-xs font-bold transition-all shadow-md inline-flex items-center gap-1.5 cursor-pointer"
+                    >
+                      🛑 Stop Auto-Random Mode
+                    </button>
+                  </div>
+                ) : (
+                  <div className="bg-[#121212]/50 border border-dashed border-white/10 rounded-2xl p-8 text-center text-slate-400 space-y-5">
+                    <div className="space-y-2">
+                      <Layers className="w-8 h-8 text-slate-600 mx-auto" />
+                      <p className="text-sm font-semibold">No active player currently under auction</p>
+                      <p className="text-xs text-slate-500">You can manually select a player from the board, or let the AI pilot the draft randomly!</p>
+                    </div>
+
+                    <div className="flex flex-col sm:flex-row gap-3 justify-center items-center">
+                      <button
+                        onClick={handleStartAutoRandomDraft}
+                        className="w-full sm:w-auto px-5 py-2.5 bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-400 hover:to-yellow-400 text-[#0a0a0a] rounded-xl text-xs font-black uppercase tracking-wider transition-all shadow-lg hover:shadow-amber-500/10 flex items-center justify-center gap-2 cursor-pointer"
+                      >
+                        🎲 Start Random Bidding Auto-Run
+                      </button>
+                      <button
+                        onClick={() => setActiveTab('players')}
+                        className="w-full sm:w-auto px-5 py-2.5 bg-white/5 hover:bg-white/10 text-slate-200 border border-white/15 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+                      >
+                        <Play className="w-3 h-3 fill-current text-slate-400" /> View Board
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
           </div>

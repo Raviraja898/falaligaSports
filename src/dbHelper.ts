@@ -26,7 +26,8 @@ export async function seedDatabase() {
     tiedOwners: [],
     originalWinningAmount: 0,
     maxTeamSize: 15,
-    minGirlsCount: 4
+    minGirlsCount: 4,
+    autoRandomMode: false
   });
 
   // 2. Clear old owners & write initial owners
@@ -367,4 +368,10 @@ export async function rescheduleTiedPlayer(playerId: string) {
   });
 
   await batch.commit();
+}
+
+// Toggle auto random mode
+export async function setAutoRandomMode(enabled: boolean) {
+  const statusRef = doc(db, 'auction', 'status');
+  await updateDoc(statusRef, { autoRandomMode: enabled });
 }
