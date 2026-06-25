@@ -124,7 +124,7 @@ export default function OwnerDashboard({
                 </div>
                 {!targetOwner.password && (
                   <p className="text-[10px] text-amber-400 mt-1 font-semibold">
-                    💡 Note: No password has been set yet. Try the default '1234'.
+                    💡 Please ask the Admin for your team access credentials.
                   </p>
                 )}
               </div>
@@ -343,7 +343,7 @@ export default function OwnerDashboard({
           }`}
         >
           <span className="flex items-center gap-1.5">
-            <Layers className="w-4 h-4" /> Upcoming Draft Pool ({players.filter(p => p.status === 'AVAILABLE').length})
+            <Layers className="w-4 h-4" /> Upcoming Players Board ({players.filter(p => p.status === 'AVAILABLE').length})
           </span>
         </button>
       </div>
@@ -620,7 +620,7 @@ export default function OwnerDashboard({
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
               <h3 className="text-lg font-bold text-slate-100 flex items-center gap-2">
-                <Layers className="w-5 h-5 text-amber-500" /> Upcoming Draft Pool
+                <Layers className="w-5 h-5 text-amber-500" /> Upcoming Players Board
               </h3>
               <p className="text-xs text-slate-400">Preview details and stats for the upcoming players yet to be put up for bidding</p>
             </div>
@@ -632,7 +632,7 @@ export default function OwnerDashboard({
             return upcomingPlayers.length === 0 ? (
               <div className="bg-[#121212]/50 border border-dashed border-white/10 rounded-3xl p-16 text-center text-slate-500">
                 <Sparkles className="w-10 h-10 mx-auto mb-3 text-slate-600" />
-                <p className="text-sm font-semibold text-slate-400">Draft Pool is Exhausted</p>
+                <p className="text-sm font-semibold text-slate-400">Players Pool is Exhausted</p>
                 <p className="text-xs text-slate-500 mt-1 max-w-sm mx-auto">
                   All available competitors have been put up for auction! Look at the 'Won' list to see the finalized squads.
                 </p>

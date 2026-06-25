@@ -325,3 +325,46 @@ export async function updateOwnerPassword(ownerId: string, password: string) {
   const ownerRef = doc(db, 'owners', ownerId);
   await updateDoc(ownerRef, { password });
 }
+
+// Reschedule tied player to a random new position in the pool
+export async function rescheduleTiedPlayer(playerId: string) {
+  const batch = writeBatch(db);
+  const playerRef = doc(db, 'players', playerId);
+  const playerSnap = await getDoc(playerRef);
+  
+  if (playerSnap.exists()) {
+    const playerData = playerSnap.data() as Player;
+    
+    // Create new player ref with a new ID to randomize position
+    const newId = `player_${Date.now()}`;
+    const newPlayerRef = doc(db, 'players', newId);
+    
+    batch.set(newPlayerRef, {
+      ...playerData,
+      id: newId,
+      status: 'AVAILABLE',
+      ownerId: null,
+      winningBid: null
+    });
+    
+    // Delete the old player
+    batch.delete(playerRef);
+  }
+
+  // Clear bids for this player
+  const bidsSnap = await getDocs(query(collection(db, 'bids'), where('playerId', '==', playerId)));
+  bidsSnap.forEach((d) => {
+    batch.delete(doc(db, 'bids', d.id));
+  });
+
+  // Reset auction status to IDLE
+  const statusRef = doc(db, 'auction', 'status');
+  batch.update(statusRef, {
+    activePlayerId: null,
+    status: 'IDLE',
+    tiedOwners: [],
+    originalWinningAmount: 0
+  });
+
+  await batch.commit();
+}

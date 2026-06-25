@@ -13,7 +13,8 @@ import {
   deletePlayer,
   deleteOwner,
   restartPlayerBid,
-  updateOwnerPassword
+  updateOwnerPassword,
+  rescheduleTiedPlayer
 } from '../dbHelper';
 import { PlayerCard, TieBreakerTool } from './CommonUI';
 import { 
@@ -81,11 +82,13 @@ export default function AdminPanel({ players, owners, bids, auctionState, onLogo
   const [playerSkillRating, setPlayerSkillRating] = useState(85);
   const [playerEmoji, setPlayerEmoji] = useState('💻');
   const [playerGender, setPlayerGender] = useState<'Male' | 'Female'>('Female');
-  const [playerSpeed, setPlayerSpeed] = useState(75);
-  const [playerStamina, setPlayerStamina] = useState(75);
-  const [playerTeamwork, setPlayerTeamwork] = useState(75);
-  const [playerFocus, setPlayerFocus] = useState(75);
-  const [playerFunFactor, setPlayerFunFactor] = useState(75);
+  const [playerSpeed, setPlayerSpeed] = useState(75); // Keep legacy mappings for any external fallbacks if needed, but we will use them or rename them
+  const [playerBadminton, setPlayerBadminton] = useState(75);
+  const [playerCarroms, setPlayerCarroms] = useState(75);
+  const [playerCricket, setPlayerCricket] = useState(75);
+  const [playerFootball, setPlayerFootball] = useState(75);
+  const [playerTT, setPlayerTT] = useState(75);
+  const [playerFalaLeague, setPlayerFalaLeague] = useState('');
   const [playerSuccessMsg, setPlayerSuccessMsg] = useState('');
 
   // Owner form state
@@ -108,12 +111,13 @@ export default function AdminPanel({ players, owners, bids, auctionState, onLogo
       status: 'AVAILABLE',
       photoUrl: playerEmoji,
       gender: playerGender,
+      falaLeague: playerFalaLeague.trim() || undefined,
       stats: {
-        speed: Number(playerSpeed),
-        stamina: Number(playerStamina),
-        teamwork: Number(playerTeamwork),
-        focus: Number(playerFocus),
-        funFactor: Number(playerFunFactor)
+        badminton: Number(playerBadminton),
+        carroms: Number(playerCarroms),
+        cricket: Number(playerCricket),
+        football: Number(playerFootball),
+        tt: Number(playerTT)
       }
     };
 
@@ -126,11 +130,12 @@ export default function AdminPanel({ players, owners, bids, auctionState, onLogo
       setPlayerSkillRating(85);
       setPlayerEmoji('💻');
       setPlayerGender('Female');
-      setPlayerSpeed(75);
-      setPlayerStamina(75);
-      setPlayerTeamwork(75);
-      setPlayerFocus(75);
-      setPlayerFunFactor(75);
+      setPlayerBadminton(75);
+      setPlayerCarroms(75);
+      setPlayerCricket(75);
+      setPlayerFootball(75);
+      setPlayerTT(75);
+      setPlayerFalaLeague('');
       setTimeout(() => setPlayerSuccessMsg(''), 4000);
     } catch (err) {
       console.error('Failed to add player:', err);
@@ -222,7 +227,7 @@ export default function AdminPanel({ players, owners, bids, auctionState, onLogo
     }
     try {
       await updateOwnerPassword(ownerId, pass);
-      alert(`Successfully set password for team "${teamName}" to: ${pass}`);
+      alert(`Successfully updated password for team "${teamName}"!`);
     } catch (err) {
       console.error('Failed to update password:', err);
       alert('Error updating password.');
@@ -377,7 +382,7 @@ export default function AdminPanel({ players, owners, bids, auctionState, onLogo
               : 'border-transparent text-slate-400 hover:text-slate-200'
           }`}
         >
-          Draft Board ({players.length})
+          Players Board ({players.length})
         </button>
         <button
           onClick={() => setActiveTab('rosters')}
@@ -397,7 +402,7 @@ export default function AdminPanel({ players, owners, bids, auctionState, onLogo
               : 'border-transparent text-slate-400 hover:text-slate-200'
           }`}
         >
-          Manage Arena
+          Manage Players
         </button>
       </div>
 
@@ -415,12 +420,12 @@ export default function AdminPanel({ players, owners, bids, auctionState, onLogo
               <div className="bg-[#121212]/50 border border-dashed border-white/10 rounded-2xl p-10 text-center text-slate-400">
                 <Layers className="w-8 h-8 text-slate-600 mx-auto mb-3" />
                 <p className="text-sm font-semibold">No player currently under auction</p>
-                <p className="text-xs text-slate-500 mt-1">Select a player from the Draft Board tab to start bidding.</p>
+                <p className="text-xs text-slate-500 mt-1">Select a player from the Players Board tab to start bidding.</p>
                 <button
                   onClick={() => setActiveTab('players')}
                   className="mt-4 px-4 py-2 bg-amber-500 hover:bg-amber-400 text-[#0a0a0a] rounded-xl text-xs font-bold transition-all shadow-md inline-flex items-center gap-1.5 cursor-pointer"
                 >
-                  <Play className="w-3.5 h-3.5 fill-current" /> Go to Draft Board
+                  <Play className="w-3.5 h-3.5 fill-current" /> Go to Players Board
                 </button>
               </div>
             )}
@@ -550,49 +555,28 @@ export default function AdminPanel({ players, owners, bids, auctionState, onLogo
                             <div>
                               <h4 className="text-xs font-bold text-amber-300">Bid Tie Detected!</h4>
                               <p className="text-[11px] text-amber-400/80 mt-0.5">
-                                {highestBidders.map(b => b.ownerName).join(' & ')} tied at <strong className="font-mono">🪙 {highestBidAmount} coins</strong>! Choose a strategy to break the tie:
+                                {highestBidders.map(b => b.ownerName).join(' & ')} tied at <strong className="font-mono">🪙 {highestBidAmount.toLocaleString()} coins</strong>!
+                              </p>
+                              <p className="text-[11px] text-amber-300/95 mt-1">
+                                Per league rules, manual decisions or spins are disabled. This player will be held and automatically rescheduled in the middle or at the end of the pool.
                               </p>
                             </div>
                           </div>
 
-                          {/* Tie breaker selection tools */}
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-1">
-                            {/* Sudden Death */}
+                          <div className="pt-2">
                             <button
-                              onClick={handleStartRebid}
-                              className="p-3 bg-[#161616] hover:bg-[#1f1f1f] border border-white/10 hover:border-amber-500/50 rounded-xl text-left transition-all group cursor-pointer"
+                              onClick={async () => {
+                                if (!activePlayer) return;
+                                try {
+                                  await rescheduleTiedPlayer(activePlayer.id);
+                                } catch (err) {
+                                  console.error("Failed to reschedule tied player:", err);
+                                }
+                              }}
+                              className="w-full py-2.5 bg-amber-500 hover:bg-amber-400 text-[#0a0a0a] font-black uppercase tracking-wider rounded-xl transition-all shadow-md flex items-center justify-center gap-1.5 cursor-pointer text-xs"
                             >
-                              <span className="text-[10px] font-extrabold uppercase tracking-widest text-amber-400 block mb-0.5 group-hover:text-amber-300">
-                                Option A
-                              </span>
-                              <span className="text-xs font-bold text-slate-100 block">Sudden Death Re-bid</span>
-                              <span className="text-[10px] text-slate-400 block mt-1">Tied owners enter private 1-minute round starting at 🪙 {highestBidAmount}</span>
+                              <RotateCcw className="w-4 h-4" /> Hold Player & Reschedule Randomly
                             </button>
-
-                            {/* Coin Toss Selector */}
-                            <div className="space-y-3">
-                              <TieBreakerTool 
-                                tiedOwners={highestBidders.map(b => owners.find(o => o.id === b.ownerId)!).filter(Boolean)} 
-                                onWinnerSelected={(winnerId) => handleAwardPlayer(winnerId, highestBidAmount)} 
-                              />
-                            </div>
-                          </div>
-
-                          {/* Option C: Manual Assignment */}
-                          <div className="border-t border-white/10 pt-3">
-                            <p className="text-[10px] uppercase tracking-wider text-slate-400 font-bold mb-2">Option B: Manual Award</p>
-                            <div className="flex flex-wrap gap-2">
-                              {highestBidders.map(bid => (
-                                <button
-                                  key={bid.ownerId}
-                                  onClick={() => handleAwardPlayer(bid.ownerId, highestBidAmount)}
-                                  className="px-3 py-1.5 bg-white/5 hover:bg-emerald-950/40 border border-white/10 hover:border-amber-500/50 text-slate-200 hover:text-amber-400 rounded-lg text-xs font-semibold transition-all flex items-center gap-1.5 cursor-pointer"
-                                >
-                                  <Check className="w-3 h-3" />
-                                  Award to {bid.ownerName}
-                                </button>
-                              ))}
-                            </div>
                           </div>
                         </div>
                       ) : (
@@ -667,7 +651,7 @@ export default function AdminPanel({ players, owners, bids, auctionState, onLogo
         <div className="space-y-6">
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div>
-              <h2 className="text-base font-bold text-slate-100">Draft Board</h2>
+              <h2 className="text-base font-bold text-slate-100">Players Board</h2>
               <p className="text-xs text-slate-400">Total available and unsold players ready for auction</p>
             </div>
             
@@ -933,7 +917,7 @@ export default function AdminPanel({ players, owners, bids, auctionState, onLogo
                 </div>
                 <div>
                   <h2 className="text-base font-bold text-slate-100">Add New Competitor</h2>
-                  <p className="text-xs text-slate-400">Introduce a new corporate athlete into the draft pool</p>
+                  <p className="text-xs text-slate-400">Introduce a new corporate athlete into the players pool</p>
                 </div>
               </div>
 
@@ -1046,79 +1030,94 @@ export default function AdminPanel({ players, owners, bids, auctionState, onLogo
                 </div>
               </div>
 
+              {/* Fala League Field */}
+              <div className="space-y-2">
+                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Previous Fala League Status (Optional)</label>
+                <select
+                  value={playerFalaLeague}
+                  onChange={(e) => setPlayerFalaLeague(e.target.value)}
+                  className="w-full px-4 py-2.5 bg-black/40 border border-white/10 focus:border-amber-500 rounded-xl text-xs focus:outline-none transition-all text-slate-200"
+                >
+                  <option value="">None / Not a previous winner</option>
+                  <option value="First Place">First Place 🏆</option>
+                  <option value="Second Place">Second Place 🥈</option>
+                  <option value="Third Place">Third Place 🥉</option>
+                </select>
+              </div>
+
               {/* Stats sliders */}
               <div className="space-y-3 bg-black/20 p-4 rounded-2xl border border-white/5">
                 <h4 className="text-[10px] font-black uppercase tracking-wider text-slate-500">Skills Breakdown</h4>
                 
                 <div className="space-y-2.5">
-                  {/* Speed */}
+                  {/* Badminton */}
                   <div className="flex items-center justify-between gap-4 text-xs">
-                    <span className="text-slate-400 w-20">⚡ Speed</span>
+                    <span className="text-slate-400 w-24">🏸 Badminton</span>
                     <input
                       type="range"
                       min="1"
                       max="100"
-                      value={playerSpeed}
-                      onChange={(e) => setPlayerSpeed(Number(e.target.value))}
+                      value={playerBadminton}
+                      onChange={(e) => setPlayerBadminton(Number(e.target.value))}
                       className="flex-1 accent-amber-500 cursor-pointer h-1.5 rounded bg-white/10"
                     />
-                    <span className="font-mono text-amber-400 font-semibold w-8 text-right">{playerSpeed}</span>
+                    <span className="font-mono text-amber-400 font-semibold w-8 text-right">{playerBadminton}</span>
                   </div>
 
-                  {/* Stamina */}
+                  {/* Carroms */}
                   <div className="flex items-center justify-between gap-4 text-xs">
-                    <span className="text-slate-400 w-20">🔋 Stamina</span>
+                    <span className="text-slate-400 w-24">🥏 Carroms</span>
                     <input
                       type="range"
                       min="1"
                       max="100"
-                      value={playerStamina}
-                      onChange={(e) => setPlayerStamina(Number(e.target.value))}
+                      value={playerCarroms}
+                      onChange={(e) => setPlayerCarroms(Number(e.target.value))}
                       className="flex-1 accent-amber-500 cursor-pointer h-1.5 rounded bg-white/10"
                     />
-                    <span className="font-mono text-amber-400 font-semibold w-8 text-right">{playerStamina}</span>
+                    <span className="font-mono text-amber-400 font-semibold w-8 text-right">{playerCarroms}</span>
                   </div>
 
-                  {/* Teamwork */}
+                  {/* Cricket */}
                   <div className="flex items-center justify-between gap-4 text-xs">
-                    <span className="text-slate-400 w-20">🤝 Teamwork</span>
+                    <span className="text-slate-400 w-24">🏏 Cricket</span>
                     <input
                       type="range"
                       min="1"
                       max="100"
-                      value={playerTeamwork}
-                      onChange={(e) => setPlayerTeamwork(Number(e.target.value))}
+                      value={playerCricket}
+                      onChange={(e) => setPlayerCricket(Number(e.target.value))}
                       className="flex-1 accent-amber-500 cursor-pointer h-1.5 rounded bg-white/10"
                     />
-                    <span className="font-mono text-amber-400 font-semibold w-8 text-right">{playerTeamwork}</span>
+                    <span className="font-mono text-amber-400 font-semibold w-8 text-right">{playerCricket}</span>
                   </div>
 
-                  {/* Focus */}
+                  {/* Football */}
                   <div className="flex items-center justify-between gap-4 text-xs">
-                    <span className="text-slate-400 w-20">🎯 Focus</span>
+                    <span className="text-slate-400 w-24">⚽ Football</span>
                     <input
                       type="range"
                       min="1"
                       max="100"
-                      value={playerFocus}
-                      onChange={(e) => setPlayerFocus(Number(e.target.value))}
+                      value={playerFootball}
+                      onChange={(e) => setPlayerFootball(Number(e.target.value))}
                       className="flex-1 accent-amber-500 cursor-pointer h-1.5 rounded bg-white/10"
                     />
-                    <span className="font-mono text-amber-400 font-semibold w-8 text-right">{playerFocus}</span>
+                    <span className="font-mono text-amber-400 font-semibold w-8 text-right">{playerFootball}</span>
                   </div>
 
-                  {/* Fun Factor */}
+                  {/* TT */}
                   <div className="flex items-center justify-between gap-4 text-xs">
-                    <span className="text-slate-400 w-20">🎈 Fun Factor</span>
+                    <span className="text-slate-400 w-24">🏓 Table Tennis (TT)</span>
                     <input
                       type="range"
                       min="1"
                       max="100"
-                      value={playerFunFactor}
-                      onChange={(e) => setPlayerFunFactor(Number(e.target.value))}
+                      value={playerTT}
+                      onChange={(e) => setPlayerTT(Number(e.target.value))}
                       className="flex-1 accent-amber-500 cursor-pointer h-1.5 rounded bg-white/10"
                     />
-                    <span className="font-mono text-amber-400 font-semibold w-8 text-right">{playerFunFactor}</span>
+                    <span className="font-mono text-amber-400 font-semibold w-8 text-right">{playerTT}</span>
                   </div>
                 </div>
               </div>
@@ -1127,7 +1126,7 @@ export default function AdminPanel({ players, owners, bids, auctionState, onLogo
                 type="submit"
                 className="w-full py-3 bg-amber-500 hover:bg-amber-400 text-[#0a0a0a] font-black uppercase tracking-wider rounded-xl transition-all shadow-md flex items-center justify-center gap-1.5 cursor-pointer"
               >
-                <PlusCircle className="w-4 h-4 text-slate-950" /> Add Competitor to Draft
+                <PlusCircle className="w-4 h-4 text-slate-950" /> Add New Player
               </button>
             </form>
           </div>

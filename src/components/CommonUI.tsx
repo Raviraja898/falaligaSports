@@ -66,13 +66,18 @@ export function PlayerCard({ player, owners, isActive = false }: PlayerCardProps
               </span>
             )}
           </div>
-          <div>
+          <div className="space-y-1">
             <h3 className="text-lg font-bold text-white tracking-tight leading-tight">
               {player.name}
             </h3>
-            <p className="text-xs text-slate-400 mt-1 flex items-center gap-1">
-              Base Price: <span className="font-mono text-amber-400 font-bold">🪙 {player.basePrice}</span>
+            <p className="text-xs text-slate-400 flex items-center gap-1">
+              Base Price: <span className="font-mono text-amber-400 font-bold">🪙 {player.basePrice.toLocaleString()}</span>
             </p>
+            {player.falaLeague && (
+              <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-yellow-500/10 border border-yellow-500/20 text-[9px] font-bold text-yellow-400 uppercase tracking-wide">
+                <Trophy className="w-2.5 h-2.5 text-yellow-500" /> Fala League: {player.falaLeague}
+              </div>
+            )}
           </div>
         </div>
 
@@ -81,52 +86,65 @@ export function PlayerCard({ player, owners, isActive = false }: PlayerCardProps
           <div className="grid grid-cols-2 gap-x-4 gap-y-2">
             <div>
               <div className="flex justify-between text-[11px] text-slate-400 font-medium mb-1">
-                <span className="flex items-center gap-1"><Zap className="w-3 h-3 text-amber-400" /> Focus</span>
-                <span>{player.stats.focus || 80}%</span>
+                <span className="flex items-center gap-1"><Zap className="w-3 h-3 text-amber-400" /> Badminton</span>
+                <span>{player.stats.badminton || 0}%</span>
               </div>
               <div className="h-1.5 w-full bg-white/5 rounded-full overflow-hidden">
                 <div 
                   className="h-full bg-gradient-to-r from-amber-500 to-amber-300 rounded-full" 
-                  style={{ width: `${player.stats.focus || 80}%` }}
+                  style={{ width: `${player.stats.badminton || 0}%` }}
                 />
               </div>
             </div>
 
             <div>
               <div className="flex justify-between text-[11px] text-slate-400 font-medium mb-1">
-                <span className="flex items-center gap-1"><Award className="w-3 h-3 text-blue-400" /> Teamwork</span>
-                <span>{player.stats.teamwork || 80}%</span>
+                <span className="flex items-center gap-1"><Award className="w-3 h-3 text-blue-400" /> Carroms</span>
+                <span>{player.stats.carroms || 0}%</span>
               </div>
               <div className="h-1.5 w-full bg-white/5 rounded-full overflow-hidden">
                 <div 
                   className="h-full bg-gradient-to-r from-blue-500 to-blue-300 rounded-full" 
-                  style={{ width: `${player.stats.teamwork || 80}%` }}
+                  style={{ width: `${player.stats.carroms || 0}%` }}
                 />
               </div>
             </div>
 
             <div>
               <div className="flex justify-between text-[11px] text-slate-400 font-medium mb-1">
-                <span className="flex items-center gap-1"><Sparkles className="w-3 h-3 text-purple-400" /> Fun Factor</span>
-                <span>{player.stats.funFactor || 80}%</span>
+                <span className="flex items-center gap-1"><Sparkles className="w-3 h-3 text-purple-400" /> Cricket</span>
+                <span>{player.stats.cricket || 0}%</span>
               </div>
               <div className="h-1.5 w-full bg-white/5 rounded-full overflow-hidden">
                 <div 
                   className="h-full bg-gradient-to-r from-purple-500 to-purple-300 rounded-full" 
-                  style={{ width: `${player.stats.funFactor || 80}%` }}
+                  style={{ width: `${player.stats.cricket || 0}%` }}
                 />
               </div>
             </div>
 
             <div>
               <div className="flex justify-between text-[11px] text-slate-400 font-medium mb-1">
-                <span className="flex items-center gap-1"><Shield className="w-3 h-3 text-emerald-400" /> Stamina</span>
-                <span>{player.stats.stamina || 80}%</span>
+                <span className="flex items-center gap-1"><Shield className="w-3 h-3 text-emerald-400" /> Football</span>
+                <span>{player.stats.football || 0}%</span>
               </div>
               <div className="h-1.5 w-full bg-white/5 rounded-full overflow-hidden">
                 <div 
                   className="h-full bg-gradient-to-r from-emerald-500 to-emerald-300 rounded-full" 
-                  style={{ width: `${player.stats.stamina || 80}%` }}
+                  style={{ width: `${player.stats.football || 0}%` }}
+                />
+              </div>
+            </div>
+
+            <div className="col-span-2 mt-1">
+              <div className="flex justify-between text-[11px] text-slate-400 font-medium mb-1">
+                <span className="flex items-center gap-1"><Trophy className="w-3 h-3 text-pink-400" /> Table Tennis (TT)</span>
+                <span>{player.stats.tt || 0}%</span>
+              </div>
+              <div className="h-1.5 w-full bg-white/5 rounded-full overflow-hidden">
+                <div 
+                  className="h-full bg-gradient-to-r from-pink-500 to-pink-300 rounded-full" 
+                  style={{ width: `${player.stats.tt || 0}%` }}
                 />
               </div>
             </div>
@@ -254,7 +272,7 @@ export function RulesBoard() {
           <div>
             <h4 className="font-bold text-slate-100">What if a Player is Unsold? 🔄</h4>
             <p className="text-xs text-slate-400 mt-0.5">
-              If no bids are placed, the player is moved to the <strong>Unsold Pool</strong>. The admin can re-auction them at any time during or after the main round (typically at a 20% discount on base price for speed-drafting!).
+              If no bids are placed, the player is moved to the <strong>Unsold Pool</strong>. The admin can re-auction them at any time during or after the main round (typically at a 20% discount on base price for speed-bidding!).
             </p>
           </div>
         </div>

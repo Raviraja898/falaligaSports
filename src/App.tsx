@@ -10,8 +10,134 @@ import { seedDatabase } from './dbHelper';
 import AdminPanel from './components/AdminPanel';
 import OwnerDashboard from './components/OwnerDashboard';
 import AdminLogin from './components/AdminLogin';
-import { Trophy, Users, ShieldAlert, Star, Sparkles, HelpCircle, Search, SlidersHorizontal } from 'lucide-react';
+import { Trophy, Users, ShieldAlert, Star, Sparkles, HelpCircle, Search, SlidersHorizontal, EyeOff, RotateCcw } from 'lucide-react';
 import { PlayerCard } from './components/CommonUI';
+import { motion, AnimatePresence } from 'motion/react';
+
+// 3D Flipping Card for Live Bidding
+function FlippingCard({ player, owners, isBidding }: { player: Player, owners: Owner[], isBidding: boolean }) {
+  return (
+    <div className="perspective-1000 w-full max-w-sm mx-auto h-[500px]">
+      <motion.div
+        className="w-full h-full transform-style-3d relative"
+        animate={isBidding ? { rotateY: [0, 180, 360] } : { rotateY: 0 }}
+        transition={isBidding ? { repeat: Infinity, duration: 6, ease: "linear" } : { duration: 0.8 }}
+      >
+        {/* Front Face of the Card */}
+        <div className="absolute inset-0 backface-hidden w-full h-full">
+          <PlayerCard player={player} owners={owners} isActive={true} />
+        </div>
+        
+        {/* Back Face of the Card */}
+        <div className="absolute inset-0 backface-hidden w-full h-full rotate-y-180 bg-gradient-to-b from-[#181818] to-[#0a0a0a] border-2 border-amber-500/30 rounded-3xl p-6 flex flex-col items-center justify-center text-center shadow-2xl relative overflow-hidden">
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(245,158,11,0.06)_0%,transparent_70%)] pointer-events-none" />
+          <div className="w-20 h-20 bg-amber-500/10 border border-amber-500/20 text-amber-500 rounded-2xl flex items-center justify-center text-4xl mb-6 shadow-inner animate-pulse">
+            ✨
+          </div>
+          <h3 className="text-2xl font-black text-amber-400 tracking-wider font-display uppercase">FALALIGA 4.0</h3>
+          <p className="text-xs text-slate-400 mt-2 uppercase tracking-widest font-black">BIDDING ACTIVE</p>
+          <div className="mt-8 flex items-center gap-2 px-3 py-1.5 bg-amber-500/10 border border-amber-500/20 text-amber-400 text-[10px] font-black uppercase tracking-widest rounded-full animate-bounce">
+            <span className="w-2 h-2 rounded-full bg-amber-500 animate-ping" /> Place Blind Bid
+          </div>
+        </div>
+      </motion.div>
+    </div>
+  );
+}
+
+// Sparkles / Celebratory Overlay for Player Acquisition
+function WinnerCelebrationOverlay({ player, winningOwner, onClose }: { player: Player, winningOwner: Owner, onClose: () => void }) {
+  return (
+    <div className="fixed inset-0 z-50 bg-[#0a0a0af2] backdrop-blur-xl flex flex-col items-center justify-center p-6 text-center overflow-hidden">
+      {/* Interactive sparkles/bursts */}
+      <div className="absolute inset-0 pointer-events-none overflow-hidden">
+        {[...Array(50)].map((_, i) => {
+          const size = Math.random() * 8 + 4;
+          const left = Math.random() * 100;
+          const delay = Math.random() * 4;
+          const duration = Math.random() * 3 + 2;
+          return (
+            <motion.div
+              key={i}
+              className="absolute rounded-full"
+              style={{
+                width: size,
+                height: size,
+                left: `${left}%`,
+                top: '110%',
+                backgroundColor: winningOwner.color || '#f59e0b',
+                boxShadow: `0 0 12px ${winningOwner.color || '#f59e0b'}`,
+              }}
+              animate={{
+                top: '-10%',
+                x: [0, (Math.random() - 0.5) * 200],
+                rotate: [0, 360],
+              }}
+              transition={{
+                duration: duration,
+                repeat: Infinity,
+                delay: delay,
+                ease: "easeOut",
+              }}
+            />
+          );
+        })}
+      </div>
+
+      <motion.div
+        initial={{ scale: 0.4, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        exit={{ scale: 0.4, opacity: 0 }}
+        transition={{ type: "spring", damping: 15 }}
+        className="max-w-xl w-full space-y-8 bg-gradient-to-b from-[#161616] to-[#0c0c0c] border border-white/10 p-8 rounded-3xl shadow-2xl relative"
+        style={{ boxShadow: `0 0 50px ${(winningOwner.color || '#f59e0b')}40` }}
+      >
+        <div className="absolute top-0 left-0 w-full h-1.5" style={{ backgroundColor: winningOwner.color }} />
+        
+        <div className="space-y-2">
+          <span className="px-4 py-1.5 rounded-full text-xs font-black uppercase tracking-widest bg-amber-500/10 text-amber-400 border border-amber-500/20 inline-block animate-bounce">
+            🎉 PLAYER WON 🎉
+          </span>
+          <h2 className="text-4xl font-black text-white tracking-tight leading-none mt-2">
+            ACQUISITION SUCCESS
+          </h2>
+        </div>
+
+        <div className="flex flex-col items-center justify-center gap-4 my-6">
+          <div 
+            className="px-6 py-3.5 rounded-2xl border text-xl font-black uppercase tracking-wider shadow-lg flex items-center gap-3 animate-pulse"
+            style={{ 
+              backgroundColor: `${winningOwner.color}15`, 
+              borderColor: winningOwner.color,
+              color: winningOwner.color
+            }}
+          >
+            <Trophy className="w-6 h-6" /> {winningOwner.name}
+          </div>
+          
+          <div className="text-slate-400 text-xs font-black uppercase tracking-widest">
+            HAS ACQUIRED
+          </div>
+
+          <div className="bg-black/60 p-6 rounded-2xl border border-white/10 w-full flex items-center gap-4 justify-center">
+            <div className="text-4xl">{player.photoUrl || '👤'}</div>
+            <div className="text-left">
+              <h3 className="text-2xl font-black text-white leading-tight">{player.name}</h3>
+              <p className="text-xs text-amber-400 font-bold uppercase tracking-wider mt-1">Winning Bid: 🪙 {player.winningBid?.toLocaleString()} Coins</p>
+            </div>
+          </div>
+        </div>
+
+        <button
+          onClick={onClose}
+          className="px-6 py-2.5 bg-white text-slate-950 font-black rounded-xl text-xs hover:bg-slate-200 transition-all cursor-pointer shadow-md uppercase tracking-widest"
+        >
+          Resume Live Stream
+        </button>
+      </motion.div>
+    </div>
+  );
+}
 
 // Simple stable hash function to randomize player display order deterministically (prevents re-render jumps)
 const getStableRandomValue = (id: string) => {
@@ -32,12 +158,18 @@ export default function App() {
   const [showcaseSearch, setShowcaseSearch] = useState('');
   const [showcaseGender, setShowcaseGender] = useState<'ALL' | 'Female' | 'Male'>('ALL');
   const [showcaseStatus, setShowcaseStatus] = useState<'ALL' | 'AVAILABLE' | 'SOLD' | 'UNSOLD'>('ALL');
+  const [showcaseTeamFilter, setShowcaseTeamFilter] = useState<string>('ALL');
   const [auctionState, setAuctionState] = useState<AuctionState>({
     activePlayerId: null,
     status: 'IDLE',
     tiedOwners: [],
     originalWinningAmount: 0
   });
+
+  // Celebration states
+  const [lastSoldPlayer, setLastSoldPlayer] = useState<Player | null>(null);
+  const [showCelebration, setShowCelebration] = useState(false);
+  const prevSoldIdsRef = React.useRef<string[]>([]);
 
   // Local storage/session storage for admin authentication
   const [isAdminAuthenticated, setIsAdminAuthenticated] = useState<boolean>(() => {
@@ -119,6 +251,37 @@ export default function App() {
     };
   }, []);
 
+  // Monitor players collection for new sales in real-time to trigger celebration
+  useEffect(() => {
+    if (players.length > 0) {
+      const soldPlayers = players.filter(p => p.status === 'SOLD' && p.ownerId && p.winningBid);
+      
+      // Initialize ref on first load so we don't celebrate historical sold players
+      if (prevSoldIdsRef.current.length === 0) {
+        prevSoldIdsRef.current = soldPlayers.map(p => p.id);
+        return;
+      }
+
+      const newlySold = soldPlayers.find(p => !prevSoldIdsRef.current.includes(p.id));
+      if (newlySold) {
+        setLastSoldPlayer(newlySold);
+        setShowCelebration(true);
+        
+        // Auto dismiss celebration after 10 seconds
+        const timer = setTimeout(() => {
+          setShowCelebration(false);
+        }, 10000);
+
+        // Sync list
+        prevSoldIdsRef.current = soldPlayers.map(p => p.id);
+        return () => clearTimeout(timer);
+      }
+
+      // Keep synced
+      prevSoldIdsRef.current = soldPlayers.map(p => p.id);
+    }
+  }, [players]);
+
   const handleInitializeDb = async () => {
     setInitializing(true);
     try {
@@ -187,7 +350,7 @@ export default function App() {
                 <span className="animate-pulse w-2 h-2 rounded-full bg-amber-500" />
               </h1>
               <div className="flex items-center gap-2 text-[10px] text-slate-500 font-bold mt-0.5 uppercase tracking-wider">
-                <span>Roster Draft: {soldCount} / {players.length} Sold</span>
+                <span>Roster Status: {soldCount} / {players.length} Sold</span>
                 {activePlayer && (
                   <>
                     <span className="text-slate-700">•</span>
@@ -211,7 +374,7 @@ export default function App() {
                   : 'text-slate-400 hover:text-slate-200'
               }`}
             >
-              Choose Role
+              Falabella Live 🔴
             </button>
             <button
               onClick={() => setRole('OWNER')}
@@ -221,7 +384,7 @@ export default function App() {
                   : 'text-slate-400 hover:text-slate-200'
               }`}
             >
-              Owner Screen
+              Falabella Owners
             </button>
             <button
               onClick={() => setRole('ADMIN')}
@@ -240,99 +403,160 @@ export default function App() {
       {/* Main Content Area */}
       <main className="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 lg:p-8">
         {role === 'USER_SELECTION' && (
-          <div className="max-w-4xl mx-auto py-12 space-y-12">
-            
-            {/* Visual Hero / Welcome */}
-            <div className="text-center space-y-4">
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-[10px] font-extrabold uppercase tracking-widest bg-amber-500/10 text-amber-500 border border-amber-500/20">
-                <Sparkles className="w-3.5 h-3.5" /> FALABELLA INTEGRATION ARENA
+          <div className="space-y-12 animate-fade-in">
+            {/* Real-time Celebration Overlay */}
+            <AnimatePresence>
+              {showCelebration && lastSoldPlayer && lastSoldPlayer.ownerId && (
+                (() => {
+                  const winningOwner = owners.find(o => o.id === lastSoldPlayer.ownerId);
+                  return winningOwner ? (
+                    <WinnerCelebrationOverlay
+                      player={lastSoldPlayer}
+                      winningOwner={winningOwner}
+                      onClose={() => setShowCelebration(false)}
+                    />
+                  ) : null;
+                })()
+              )}
+            </AnimatePresence>
+
+            {/* Active Live Bidding Showcase */}
+            {activePlayer ? (
+              <div className="bg-gradient-to-b from-[#111111] to-[#050505] border-2 border-amber-500/30 p-8 rounded-3xl shadow-2xl relative overflow-hidden max-w-4xl mx-auto">
+                <div className="absolute top-0 right-0 w-32 h-32 bg-amber-500/5 rounded-full blur-3xl pointer-events-none" />
+                <div className="absolute bottom-0 left-0 w-32 h-32 bg-amber-500/5 rounded-full blur-3xl pointer-events-none" />
+                
+                <div className="grid grid-cols-1 md:grid-cols-12 gap-8 items-center">
+                  {/* Left Column: Flipping Card */}
+                  <div className="md:col-span-5 flex justify-center">
+                    <FlippingCard 
+                      player={activePlayer} 
+                      owners={owners} 
+                      isBidding={auctionState.status === 'BIDDING'} 
+                    />
+                  </div>
+
+                  {/* Right Column: Status & Real-time Info */}
+                  <div className="md:col-span-7 space-y-6">
+                    <div className="space-y-2">
+                      <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-amber-500/10 border border-amber-500/20 text-amber-500 text-[10px] font-black uppercase tracking-widest rounded-full">
+                        <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" /> Live Arena Feed
+                      </div>
+                      <h2 className="text-3xl font-black text-white tracking-tight leading-none">
+                        {auctionState.status === 'BIDDING' ? 'BIDDING IN PROGRESS...' : 'BIDS REVEALED!'}
+                      </h2>
+                      <p className="text-xs text-slate-400">
+                        {auctionState.status === 'BIDDING' 
+                          ? 'Team owners are placing secret blind bids. Card is spinning continuously!' 
+                          : 'Admin has closed bidding. Below are the bids submitted for this competitor.'}
+                      </p>
+                    </div>
+
+                    {/* Show bids in real time or hidden */}
+                    <div className="bg-black/40 border border-white/5 rounded-2xl p-5 space-y-4">
+                      <h3 className="text-xs font-bold text-slate-300 uppercase tracking-wider flex items-center justify-between">
+                        <span>Submitted Team Bids</span>
+                        <span className="text-[10px] font-mono text-slate-500">
+                          {bids.filter(b => b.playerId === activePlayer.id).length} / {owners.length} Bids
+                        </span>
+                      </h3>
+
+                      <div className="space-y-2">
+                        {owners.map(owner => {
+                          const bid = bids.find(b => b.playerId === activePlayer.id && b.ownerId === owner.id);
+                          const isRevealed = auctionState.status === 'REVEALED';
+                          
+                          return (
+                            <div key={owner.id} className="flex items-center justify-between p-3 bg-white/5 rounded-xl border border-white/5">
+                              <div className="flex items-center gap-2.5">
+                                <span className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: owner.color }} />
+                                <span className="text-xs font-extrabold text-slate-200">{owner.name}</span>
+                              </div>
+                              <div className="font-mono text-xs font-bold">
+                                {bid ? (
+                                  isRevealed ? (
+                                    <span className="text-amber-400">🪙 {bid.amount.toLocaleString()}</span>
+                                  ) : (
+                                    <span className="text-emerald-400 flex items-center gap-1">
+                                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping" /> BID PLACED
+                                    </span>
+                                  )
+                                ) : (
+                                  <span className="text-slate-600">NO BID</span>
+                                )}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  </div>
+                </div>
               </div>
-              <h2 className="text-4xl sm:text-5xl font-black text-white tracking-tight leading-tight">
-                Falaliga 4.0 Player Draft
-              </h2>
-              <p className="text-sm text-slate-400 max-w-2xl mx-auto leading-relaxed">
-                Welcome to Falaliga 4.0, the prestigious annual sports and integration games at Falabella! Bringing together our diverse departments, this real-time draft empowers team owners with <strong>🪙 1,000,000 chips (10 lakhs)</strong> to build a competitive roster. Configured to select 15 to 20 players per team, each squad must satisfy the integration mandate of recruiting <strong>at least 4 female players (girls)</strong>.
-              </p>
-            </div>
-
-            {/* Quick Role Selection Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              
-              {/* Owner Role Card */}
-              <div className="bg-[#121212] border border-white/10 hover:border-amber-500/40 p-8 rounded-3xl space-y-5 transition-all shadow-md group relative overflow-hidden">
-                <div className="absolute top-0 right-0 w-24 h-24 bg-amber-500/5 rounded-full blur-2xl group-hover:bg-amber-500/10 transition-all" />
-                <div className="w-12 h-12 rounded-2xl bg-amber-500/10 text-amber-500 border border-amber-500/20 flex items-center justify-center text-2xl font-bold">
-                  💼
+            ) : (
+              /* If no active bidding, show a highly polished Welcome / Overview hero */
+              <div className="text-center space-y-4 max-w-2xl mx-auto py-6">
+                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-[10px] font-extrabold uppercase tracking-widest bg-amber-500/10 text-amber-500 border border-amber-500/20">
+                  <Sparkles className="w-3.5 h-3.5" /> FALABELLA INTEGRATION ARENA
                 </div>
-                <div>
-                  <h3 className="text-xl font-bold text-slate-100">Team Owner Dashboard</h3>
-                  <p className="text-xs text-slate-400 mt-1.5 leading-relaxed">
-                    Log in as one of the 5 gaming teams (e.g., Tech Titans, Product Pirates), place blind bids in real-time, view your roster, and track your remaining wallet.
-                  </p>
-                </div>
-                <button
-                  onClick={() => setRole('OWNER')}
-                  className="w-full py-3 bg-amber-500 hover:bg-amber-400 text-[#0a0a0a] font-bold rounded-xl text-xs transition-all shadow-md flex items-center justify-center gap-1.5 cursor-pointer"
-                >
-                  <Users className="w-4 h-4 text-slate-900" /> Join as Team Owner
-                </button>
+                <h2 className="text-4xl sm:text-5xl font-black text-white tracking-tight leading-none">
+                  Falaliga 4.0 Live Arena
+                </h2>
+                <p className="text-sm text-slate-400 leading-relaxed">
+                  Welcome to the live public feed for Falaliga 4.0! Watch player cards spin continuously during active bidding, see sparkly blasts when players are won, and track rosters and budgets in real-time below.
+                </p>
               </div>
+            )}
 
-              {/* Admin Role Card */}
-              <div className="bg-[#121212] border border-white/10 hover:border-amber-500/40 p-8 rounded-3xl space-y-5 transition-all shadow-md group relative overflow-hidden">
-                <div className="absolute top-0 right-0 w-24 h-24 bg-amber-500/5 rounded-full blur-2xl group-hover:bg-amber-500/10 transition-all" />
-                <div className="w-12 h-12 rounded-2xl bg-amber-500/10 text-amber-500 border border-amber-500/20 flex items-center justify-center text-2xl font-bold">
-                  👑
-                </div>
-                <div>
-                  <h3 className="text-xl font-bold text-slate-100">Admin Control Panel</h3>
-                  <p className="text-xs text-slate-400 mt-1.5 leading-relaxed">
-                    Set active players to start bidding, view submitted blind bids, reveal bids when ready, resolve tie-breakers, and manage database resets.
-                  </p>
-                </div>
-                <button
-                  onClick={() => setRole('ADMIN')}
-                  className="w-full py-3 bg-transparent hover:bg-white/5 text-white font-bold rounded-xl text-xs transition-all border border-white/20 hover:border-white/30 flex items-center justify-center gap-1.5 cursor-pointer"
-                >
-                  <ShieldAlert className="w-4 h-4 text-amber-500" /> Open Host Controls
-                </button>
-              </div>
-
-            </div>
-
-            {/* Live Draft Pool Showcase */}
+            {/* Showcase & Roster Boards */}
             <div className="border-t border-white/10 pt-10 space-y-6">
               <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
                   <h3 className="text-xl font-bold text-white tracking-tight flex items-center gap-2">
-                    <Trophy className="w-5 h-5 text-amber-500" /> Live Draft Pool Showcase
+                    <Trophy className="w-5 h-5 text-amber-500" /> Live Arena Boards
                   </h3>
-                  <p className="text-xs text-slate-400 mt-1">Real-time status of all corporate competitors and draft allocations</p>
+                  <p className="text-xs text-slate-400 mt-1">Real-time status of all corporate competitors and team allocations</p>
                 </div>
 
-                {/* Filter / Search stats */}
                 <div className="text-xs font-semibold px-3 py-1.5 bg-white/5 rounded-xl border border-white/10 text-slate-400">
                   Total Pool: <span className="text-slate-200">{players.length} Players</span> | Sold: <span className="text-emerald-400">{players.filter(p => p.status === 'SOLD').length}</span>
                 </div>
               </div>
 
-              {/* Filters Panel */}
+              {/* Advanced Filters Panel */}
               <div className="bg-[#121212] border border-white/10 p-5 rounded-2xl space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-12 gap-3">
+                <div className="grid grid-cols-1 md:grid-cols-12 gap-3 items-center">
                   {/* Search bar */}
-                  <div className="md:col-span-6 relative">
+                  <div className="md:col-span-4 relative">
                     <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
                     <input
                       type="text"
                       value={showcaseSearch}
                       onChange={(e) => setShowcaseSearch(e.target.value)}
-                      placeholder="Search player name or role..."
+                      placeholder="Search name or sport..."
                       className="w-full pl-10 pr-4 py-2 bg-black/40 border border-white/10 focus:border-amber-500 rounded-xl text-xs focus:outline-none transition-all placeholder:text-slate-500 text-slate-200 font-medium"
                     />
                   </div>
 
+                  {/* Team Filter Dropdown (Satisfies "In users first tab gice options to filter based on teams and display") */}
+                  <div className="md:col-span-3">
+                    <select
+                      value={showcaseTeamFilter}
+                      onChange={(e) => setShowcaseTeamFilter(e.target.value)}
+                      className="w-full px-3 py-2 bg-black/40 border border-white/10 focus:border-amber-500 rounded-xl text-xs focus:outline-none transition-all text-slate-300 font-semibold cursor-pointer"
+                    >
+                      <option value="ALL">Show All Teams Grid</option>
+                      <option value="ALL_PLAYERS">Show Unsold Players List</option>
+                      {owners.map(owner => (
+                        <option key={owner.id} value={owner.id}>
+                          Roster: {owner.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
                   {/* Gender Filter */}
-                  <div className="md:col-span-3 flex bg-black/40 border border-white/10 p-1 rounded-xl">
+                  <div className="md:col-span-2 flex bg-black/40 border border-white/10 p-1 rounded-xl">
                     <button
                       onClick={() => setShowcaseGender('ALL')}
                       className={`flex-1 py-1 text-[10px] font-bold rounded-lg transition-all cursor-pointer ${
@@ -389,38 +613,154 @@ export default function App() {
                 </div>
               </div>
 
-              {/* Showcase Grid */}
-              {(() => {
-                const filtered = players.filter(player => {
-                  const matchSearch = player.name.toLowerCase().includes(showcaseSearch.toLowerCase()) || 
-                                      player.role.toLowerCase().includes(showcaseSearch.toLowerCase());
-                  const matchGender = showcaseGender === 'ALL' || player.gender === showcaseGender;
-                  const matchStatus = showcaseStatus === 'ALL' || player.status === showcaseStatus;
-                  return matchSearch && matchGender && matchStatus;
-                });
+              {/* Display Options Logic */}
+              {showcaseTeamFilter === 'ALL' ? (
+                /* "AFter bidding completed display all the team on screen." / Default Beautiful All Teams Grid */
+                <div className="space-y-6">
+                  <div className="flex items-center justify-between border-b border-white/5 pb-2">
+                    <h4 className="text-sm font-black uppercase tracking-widest text-amber-400 flex items-center gap-2">
+                      🏆 TEAM ROSTERS SUMMARY BOARD
+                    </h4>
+                    <span className="text-[10px] font-semibold text-slate-500">REAL-TIME OVERVIEW</span>
+                  </div>
 
-                if (filtered.length === 0) {
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
+                    {owners.map(owner => {
+                      const ownerPlayers = players.filter(p => p.ownerId === owner.id && p.status === 'SOLD');
+                      const femaleCount = ownerPlayers.filter(p => p.gender === 'Female').length;
+                      const spent = ownerPlayers.reduce((sum, p) => sum + (p.winningBid || 0), 0);
+                      const budget = 1000000 - spent;
+                      
+                      return (
+                        <div 
+                          key={owner.id} 
+                          className="bg-[#121212] border border-white/10 rounded-2xl p-4 space-y-4 flex flex-col justify-between"
+                          style={{ borderTop: `4px solid ${owner.color}` }}
+                        >
+                          {/* Header */}
+                          <div>
+                            <h5 className="font-extrabold text-sm text-white tracking-tight line-clamp-1">{owner.name}</h5>
+                            <div className="grid grid-cols-2 gap-1.5 mt-2.5 text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                              <div className="bg-white/5 p-1 rounded text-center">
+                                <span className="block text-slate-500">Budget</span>
+                                <span className="text-amber-400">🪙 {budget.toLocaleString()}</span>
+                              </div>
+                              <div className="bg-white/5 p-1 rounded text-center">
+                                <span className="block text-slate-500">Girls</span>
+                                <span className={femaleCount >= 4 ? "text-emerald-400" : "text-pink-400"}>
+                                  {femaleCount} / 4
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Players List */}
+                          <div className="space-y-1.5 flex-1 py-3 border-t border-b border-white/5 my-2 overflow-y-auto max-h-[180px] scrollbar-thin">
+                            {ownerPlayers.length === 0 ? (
+                              <p className="text-[10px] text-slate-600 italic text-center py-4">No players won yet</p>
+                            ) : (
+                              ownerPlayers.map(p => (
+                                <div key={p.id} className="flex items-center justify-between text-[11px] bg-black/30 px-2 py-1 rounded">
+                                  <span className="text-slate-300 font-medium truncate max-w-[90px]" title={p.name}>
+                                    {p.gender === 'Female' ? '👩' : '👨'} {p.name}
+                                  </span>
+                                  <span className="font-mono font-bold text-amber-500/90 text-[10px]">🪙{p.winningBid?.toLocaleString()}</span>
+                                </div>
+                              ))
+                            )}
+                          </div>
+
+                          {/* Footer Info */}
+                          <div className="text-[10px] text-slate-500 font-bold flex items-center justify-between">
+                            <span>TOTAL PLAYERS:</span>
+                            <span className="text-slate-300">{ownerPlayers.length}</span>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              ) : showcaseTeamFilter === 'ALL_PLAYERS' ? (
+                /* Normal pool list filtering */
+                (() => {
+                  const filtered = players.filter(player => {
+                    const matchSearch = player.name.toLowerCase().includes(showcaseSearch.toLowerCase()) || 
+                                        player.role.toLowerCase().includes(showcaseSearch.toLowerCase());
+                    const matchGender = showcaseGender === 'ALL' || player.gender === showcaseGender;
+                    const matchStatus = showcaseStatus === 'ALL' || player.status === showcaseStatus;
+                    return matchSearch && matchGender && matchStatus;
+                  });
+
+                  if (filtered.length === 0) {
+                    return (
+                      <div className="p-12 text-center text-slate-500 border border-dashed border-white/10 rounded-2xl text-xs bg-[#121212]/30">
+                        No matching players found in the pool. Try adjusting your search or filters!
+                      </div>
+                    );
+                  }
+
                   return (
-                    <div className="p-12 text-center text-slate-500 border border-dashed border-white/10 rounded-2xl text-xs bg-[#121212]/30">
-                      No matching players found in the draft pool. Try adjusting your search or filters!
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+                      {filtered.map(player => (
+                        <div key={player.id}>
+                          <PlayerCard 
+                            player={player} 
+                            owners={owners} 
+                            isActive={player.id === auctionState.activePlayerId} 
+                          />
+                        </div>
+                      ))}
                     </div>
                   );
-                }
+                })()
+              ) : (
+                /* Selected Single Team Roster View */
+                (() => {
+                  const targetOwner = owners.find(o => o.id === showcaseTeamFilter);
+                  const teamPlayers = players.filter(p => p.ownerId === showcaseTeamFilter && p.status === 'SOLD');
+                  
+                  if (!targetOwner) return null;
 
-                return (
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-                    {filtered.map(player => (
-                      <div key={player.id}>
-                        <PlayerCard 
-                          player={player} 
-                          owners={owners} 
-                          isActive={player.id === auctionState.activePlayerId} 
-                        />
+                  const filtered = teamPlayers.filter(player => {
+                    const matchSearch = player.name.toLowerCase().includes(showcaseSearch.toLowerCase()) || 
+                                        player.role.toLowerCase().includes(showcaseSearch.toLowerCase());
+                    const matchGender = showcaseGender === 'ALL' || player.gender === showcaseGender;
+                    return matchSearch && matchGender;
+                  });
+
+                  return (
+                    <div className="space-y-6">
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 rounded-2xl bg-[#121212] border border-white/10" style={{ borderLeft: `6px solid ${targetOwner.color}` }}>
+                        <div>
+                          <h4 className="text-lg font-black text-white">{targetOwner.name} Won Roster</h4>
+                          <p className="text-xs text-slate-400 mt-1">Showing all acquired corporate athletes and their auction bids</p>
+                        </div>
+                        <div className="text-xs font-bold text-slate-300">
+                          Total Budget Spent: <span className="text-amber-400 font-mono">🪙 {teamPlayers.reduce((sum, p) => sum + (p.winningBid || 0), 0).toLocaleString()}</span>
+                        </div>
                       </div>
-                    ))}
-                  </div>
-                );
-              })()}
+
+                      {filtered.length === 0 ? (
+                        <div className="p-12 text-center text-slate-500 border border-dashed border-white/10 rounded-2xl text-xs bg-[#121212]/30">
+                          No players matching current criteria won by this team yet.
+                        </div>
+                      ) : (
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+                          {filtered.map(player => (
+                            <div key={player.id}>
+                              <PlayerCard 
+                                player={player} 
+                                owners={owners} 
+                                isActive={player.id === auctionState.activePlayerId} 
+                              />
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()
+              )}
             </div>
 
           </div>

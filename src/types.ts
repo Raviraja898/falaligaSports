@@ -9,13 +9,14 @@ export interface Player {
   winningBid?: number;
   photoUrl?: string; // funny emoji or placeholder
   stats: {
-    speed?: number;
-    stamina?: number;
-    teamwork?: number;
-    focus?: number;
-    funFactor?: number;
+    badminton?: number;
+    carroms?: number;
+    cricket?: number;
+    football?: number;
+    tt?: number;
   };
   gender: 'Male' | 'Female';
+  falaLeague?: string; // e.g. "First Place", "Second Place", "Third Place", or undefined
 }
 
 export interface Owner {

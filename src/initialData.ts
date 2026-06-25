@@ -18,7 +18,8 @@ export const INITIAL_PLAYERS: Player[] = [
     status: 'AVAILABLE',
     photoUrl: '📊',
     gender: 'Female',
-    stats: { speed: 65, stamina: 88, teamwork: 90, focus: 98, funFactor: 70 }
+    falaLeague: 'First Place',
+    stats: { badminton: 85, carroms: 90, cricket: 65, football: 70, tt: 95 }
   },
   {
     id: 'p2',
@@ -29,7 +30,7 @@ export const INITIAL_PLAYERS: Player[] = [
     status: 'AVAILABLE',
     photoUrl: '🚀',
     gender: 'Male',
-    stats: { speed: 95, stamina: 70, teamwork: 60, focus: 85, funFactor: 98 }
+    stats: { badminton: 70, carroms: 85, cricket: 95, football: 90, tt: 60 }
   },
   {
     id: 'p3',
@@ -40,7 +41,8 @@ export const INITIAL_PLAYERS: Player[] = [
     status: 'AVAILABLE',
     photoUrl: '🎙️',
     gender: 'Female',
-    stats: { speed: 70, stamina: 90, teamwork: 95, focus: 92, funFactor: 80 }
+    falaLeague: 'Second Place',
+    stats: { badminton: 90, carroms: 95, cricket: 70, football: 65, tt: 85 }
   },
   {
     id: 'p4',
@@ -51,7 +53,7 @@ export const INITIAL_PLAYERS: Player[] = [
     status: 'AVAILABLE',
     photoUrl: '📥',
     gender: 'Male',
-    stats: { speed: 99, stamina: 85, teamwork: 88, focus: 95, funFactor: 65 }
+    stats: { badminton: 75, carroms: 80, cricket: 98, football: 85, tt: 90 }
   },
   {
     id: 'p5',
@@ -62,7 +64,7 @@ export const INITIAL_PLAYERS: Player[] = [
     status: 'AVAILABLE',
     photoUrl: '☕',
     gender: 'Female',
-    stats: { speed: 100, stamina: 99, teamwork: 75, focus: 60, funFactor: 90 }
+    stats: { badminton: 80, carroms: 75, cricket: 60, football: 75, tt: 92 }
   },
   {
     id: 'p6',
@@ -73,7 +75,8 @@ export const INITIAL_PLAYERS: Player[] = [
     status: 'AVAILABLE',
     photoUrl: '🌴',
     gender: 'Male',
-    stats: { speed: 40, stamina: 80, teamwork: 85, focus: 90, funFactor: 100 }
+    falaLeague: 'Third Place',
+    stats: { badminton: 65, carroms: 90, cricket: 80, football: 82, tt: 78 }
   },
   {
     id: 'p7',
@@ -84,7 +87,7 @@ export const INITIAL_PLAYERS: Player[] = [
     status: 'AVAILABLE',
     photoUrl: '💬',
     gender: 'Male',
-    stats: { speed: 60, stamina: 75, teamwork: 99, focus: 80, funFactor: 88 }
+    stats: { badminton: 88, carroms: 80, cricket: 82, football: 75, tt: 85 }
   },
   {
     id: 'p8',
@@ -95,7 +98,7 @@ export const INITIAL_PLAYERS: Player[] = [
     status: 'AVAILABLE',
     photoUrl: '🎨',
     gender: 'Male',
-    stats: { speed: 85, stamina: 80, teamwork: 82, focus: 96, funFactor: 85 }
+    stats: { badminton: 90, carroms: 85, cricket: 75, football: 70, tt: 92 }
   },
   {
     id: 'p9',
@@ -106,7 +109,7 @@ export const INITIAL_PLAYERS: Player[] = [
     status: 'AVAILABLE',
     photoUrl: '🥷',
     gender: 'Female',
-    stats: { speed: 92, stamina: 78, teamwork: 80, focus: 94, funFactor: 75 }
+    stats: { badminton: 85, carroms: 94, cricket: 65, football: 60, tt: 88 }
   },
   {
     id: 'p10',
@@ -115,9 +118,10 @@ export const INITIAL_PLAYERS: Player[] = [
     skillRating: 85,
     basePrice: 60000,
     status: 'AVAILABLE',
-    photoUrl: '🏓',
+    photoUrl: '',
     gender: 'Male',
-    stats: { speed: 94, stamina: 88, teamwork: 78, focus: 85, funFactor: 99 }
+    falaLeague: 'First Place',
+    stats: { badminton: 92, carroms: 80, cricket: 85, football: 78, tt: 99 }
   },
   {
     id: 'p11',
@@ -128,7 +132,7 @@ export const INITIAL_PLAYERS: Player[] = [
     status: 'AVAILABLE',
     photoUrl: '📊',
     gender: 'Female',
-    stats: { speed: 75, stamina: 82, teamwork: 94, focus: 90, funFactor: 85 }
+    stats: { badminton: 78, carroms: 85, cricket: 72, football: 68, tt: 90 }
   },
   {
     id: 'p12',
@@ -139,7 +143,7 @@ export const INITIAL_PLAYERS: Player[] = [
     status: 'AVAILABLE',
     photoUrl: '📚',
     gender: 'Male',
-    stats: { speed: 80, stamina: 85, teamwork: 85, focus: 99, funFactor: 70 }
+    stats: { badminton: 70, carroms: 95, cricket: 88, football: 82, tt: 75 }
   },
   {
     id: 'p13',
@@ -150,7 +154,7 @@ export const INITIAL_PLAYERS: Player[] = [
     status: 'AVAILABLE',
     photoUrl: '🐛',
     gender: 'Female',
-    stats: { speed: 85, stamina: 92, teamwork: 88, focus: 95, funFactor: 80 }
+    stats: { badminton: 85, carroms: 92, cricket: 74, football: 70, tt: 96 }
   },
   {
     id: 'p14',
@@ -161,7 +165,7 @@ export const INITIAL_PLAYERS: Player[] = [
     status: 'AVAILABLE',
     photoUrl: '📅',
     gender: 'Female',
-    stats: { speed: 70, stamina: 85, teamwork: 93, focus: 91, funFactor: 82 }
+    stats: { badminton: 80, carroms: 90, cricket: 68, football: 65, tt: 85 }
   },
   {
     id: 'p15',
@@ -172,7 +176,7 @@ export const INITIAL_PLAYERS: Player[] = [
     status: 'AVAILABLE',
     photoUrl: '🧠',
     gender: 'Female',
-    stats: { speed: 80, stamina: 80, teamwork: 96, focus: 88, funFactor: 92 }
+    stats: { badminton: 88, carroms: 85, cricket: 72, football: 70, tt: 92 }
   },
   {
     id: 'p16',
@@ -183,7 +187,7 @@ export const INITIAL_PLAYERS: Player[] = [
     status: 'AVAILABLE',
     photoUrl: '🐳',
     gender: 'Male',
-    stats: { speed: 88, stamina: 82, teamwork: 78, focus: 94, funFactor: 76 }
+    stats: { badminton: 72, carroms: 88, cricket: 85, football: 82, tt: 78 }
   },
   {
     id: 'p17',
@@ -194,7 +198,7 @@ export const INITIAL_PLAYERS: Player[] = [
     status: 'AVAILABLE',
     photoUrl: '✨',
     gender: 'Female',
-    stats: { speed: 90, stamina: 80, teamwork: 92, focus: 75, funFactor: 95 }
+    stats: { badminton: 82, carroms: 80, cricket: 65, football: 75, tt: 90 }
   },
   {
     id: 'p18',
@@ -205,7 +209,7 @@ export const INITIAL_PLAYERS: Player[] = [
     status: 'AVAILABLE',
     photoUrl: '⌨️',
     gender: 'Male',
-    stats: { speed: 98, stamina: 85, teamwork: 70, focus: 88, funFactor: 78 }
+    stats: { badminton: 75, carroms: 85, cricket: 80, football: 88, tt: 76 }
   },
   {
     id: 'p19',
@@ -216,7 +220,7 @@ export const INITIAL_PLAYERS: Player[] = [
     status: 'AVAILABLE',
     photoUrl: '🧊',
     gender: 'Female',
-    stats: { speed: 75, stamina: 85, teamwork: 100, focus: 80, funFactor: 98 }
+    stats: { badminton: 84, carroms: 95, cricket: 70, football: 72, tt: 86 }
   },
   {
     id: 'p20',
@@ -227,7 +231,7 @@ export const INITIAL_PLAYERS: Player[] = [
     status: 'AVAILABLE',
     photoUrl: '🍵',
     gender: 'Male',
-    stats: { speed: 85, stamina: 70, teamwork: 80, focus: 70, funFactor: 95 }
+    stats: { badminton: 78, carroms: 82, cricket: 75, football: 70, tt: 80 }
   },
   {
     id: 'p21',
@@ -238,7 +242,7 @@ export const INITIAL_PLAYERS: Player[] = [
     status: 'AVAILABLE',
     photoUrl: '🧹',
     gender: 'Female',
-    stats: { speed: 82, stamina: 88, teamwork: 84, focus: 98, funFactor: 72 }
+    stats: { badminton: 82, carroms: 96, cricket: 70, football: 68, tt: 92 }
   },
   {
     id: 'p22',
@@ -249,7 +253,7 @@ export const INITIAL_PLAYERS: Player[] = [
     status: 'AVAILABLE',
     photoUrl: '🌃',
     gender: 'Male',
-    stats: { speed: 70, stamina: 100, teamwork: 80, focus: 85, funFactor: 70 }
+    stats: { badminton: 70, carroms: 85, cricket: 90, football: 85, tt: 72 }
   },
   {
     id: 'p23',
@@ -260,7 +264,8 @@ export const INITIAL_PLAYERS: Player[] = [
     status: 'AVAILABLE',
     photoUrl: '📈',
     gender: 'Female',
-    stats: { speed: 80, stamina: 85, teamwork: 90, focus: 97, funFactor: 80 }
+    falaLeague: 'Second Place',
+    stats: { badminton: 86, carroms: 92, cricket: 72, football: 75, tt: 94 }
   },
   {
     id: 'p24',
@@ -271,7 +276,7 @@ export const INITIAL_PLAYERS: Player[] = [
     status: 'AVAILABLE',
     photoUrl: '🤝',
     gender: 'Female',
-    stats: { speed: 70, stamina: 85, teamwork: 98, focus: 92, funFactor: 88 }
+    stats: { badminton: 80, carroms: 98, cricket: 65, football: 68, tt: 88 }
   },
   {
     id: 'p25',
@@ -282,7 +287,7 @@ export const INITIAL_PLAYERS: Player[] = [
     status: 'AVAILABLE',
     photoUrl: '🔌',
     gender: 'Male',
-    stats: { speed: 88, stamina: 90, teamwork: 80, focus: 85, funFactor: 82 }
+    stats: { badminton: 74, carroms: 82, cricket: 88, football: 85, tt: 78 }
   },
   {
     id: 'p26',
@@ -293,7 +298,7 @@ export const INITIAL_PLAYERS: Player[] = [
     status: 'AVAILABLE',
     photoUrl: '🗓️',
     gender: 'Female',
-    stats: { speed: 92, stamina: 80, teamwork: 88, focus: 90, funFactor: 84 }
+    stats: { badminton: 82, carroms: 88, cricket: 68, football: 72, tt: 85 }
   },
   {
     id: 'p27',
@@ -304,7 +309,7 @@ export const INITIAL_PLAYERS: Player[] = [
     status: 'AVAILABLE',
     photoUrl: '🛡️',
     gender: 'Male',
-    stats: { speed: 85, stamina: 85, teamwork: 75, focus: 100, funFactor: 70 }
+    stats: { badminton: 72, carroms: 95, cricket: 92, football: 90, tt: 85 }
   },
   {
     id: 'p28',
@@ -315,7 +320,7 @@ export const INITIAL_PLAYERS: Player[] = [
     status: 'AVAILABLE',
     photoUrl: '✍️',
     gender: 'Female',
-    stats: { speed: 80, stamina: 82, teamwork: 90, focus: 88, funFactor: 90 }
+    stats: { badminton: 80, carroms: 88, cricket: 70, football: 72, tt: 88 }
   },
   {
     id: 'p29',
@@ -326,7 +331,7 @@ export const INITIAL_PLAYERS: Player[] = [
     status: 'AVAILABLE',
     photoUrl: '⚡',
     gender: 'Male',
-    stats: { speed: 94, stamina: 80, teamwork: 82, focus: 98, funFactor: 75 }
+    stats: { badminton: 74, carroms: 85, cricket: 88, football: 82, tt: 90 }
   },
   {
     id: 'p30',
@@ -337,6 +342,6 @@ export const INITIAL_PLAYERS: Player[] = [
     status: 'AVAILABLE',
     photoUrl: '📝',
     gender: 'Female',
-    stats: { speed: 85, stamina: 85, teamwork: 88, focus: 85, funFactor: 80 }
+    stats: { badminton: 82, carroms: 88, cricket: 65, football: 60, tt: 85 }
   }
 ];
