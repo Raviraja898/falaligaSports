@@ -1,0 +1,8 @@
+{
+  "name": "Office Games Player Auction",
+  "description": "A real-time blind bidding and auction platform for office sports and gaming drafts, featuring live wallet tracking, tie resolution, and admin tools.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

@@ -1,0 +1,92 @@
+{
+  "entities": {
+    "Player": {
+      "title": "Player",
+      "description": "An elite office games competitor up for auction.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "role": { "type": "string" },
+        "skillRating": { "type": "number" },
+        "basePrice": { "type": "number" },
+        "status": { "type": "string", "enum": ["AVAILABLE", "BIDDING", "SOLD", "UNSOLD"] },
+        "ownerId": { "type": "string" },
+        "winningBid": { "type": "number" },
+        "photoUrl": { "type": "string" },
+        "stats": {
+          "type": "object",
+          "properties": {
+            "speed": { "type": "number" },
+            "stamina": { "type": "number" },
+            "teamwork": { "type": "number" },
+            "focus": { "type": "number" },
+            "funFactor": { "type": "number" }
+          }
+        }
+      },
+      "required": ["id", "name", "role", "skillRating", "basePrice", "status", "stats"]
+    },
+    "Owner": {
+      "title": "Owner",
+      "description": "A team owner with a budget to bid on players.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "color": { "type": "string" },
+        "wallet": { "type": "number" },
+        "initialWallet": { "type": "number" }
+      },
+      "required": ["id", "name", "color", "wallet", "initialWallet"]
+    },
+    "Bid": {
+      "title": "Bid",
+      "description": "A blind bid submitted by an owner for a player.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "playerId": { "type": "string" },
+        "ownerId": { "type": "string" },
+        "ownerName": { "type": "string" },
+        "amount": { "type": "number" },
+        "timestamp": { "type": "number" }
+      },
+      "required": ["id", "playerId", "ownerId", "ownerName", "amount", "timestamp"]
+    },
+    "AuctionState": {
+      "title": "AuctionState",
+      "description": "The global real-time state of the active auction.",
+      "type": "object",
+      "properties": {
+        "activePlayerId": { "type": "string" },
+        "status": { "type": "string", "enum": ["IDLE", "BIDDING", "REVEALED", "TIE_RESOLUTION", "FINISHED"] },
+        "timer": { "type": "number" },
+        "tiedOwners": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "originalWinningAmount": { "type": "number" }
+      },
+      "required": ["status"]
+    }
+  },
+  "firestore": {
+    "players/{playerId}": {
+      "schema": "Player",
+      "description": "Draft pool containing all corporate game competitors."
+    },
+    "owners/{ownerId}": {
+      "schema": "Owner",
+      "description": "Participating team owner accounts and their spending limits."
+    },
+    "bids/{bidId}": {
+      "schema": "Bid",
+      "description": "Real-time list of blind bids placed by owners."
+    },
+    "auction/status": {
+      "schema": "AuctionState",
+      "description": "Global status tracking the current round and phase."
+    }
+  }
+}
