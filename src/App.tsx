@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import confetti from 'canvas-confetti';
 import { 
   collection, 
   onSnapshot, 
@@ -267,10 +268,42 @@ export default function App() {
         setLastSoldPlayer(newlySold);
         setShowCelebration(true);
         
-        // Auto dismiss celebration after 10 seconds
+        // Trigger beautiful 5-second confetti blast using winning team's color
+        const winningOwner = owners.find(o => o.id === newlySold.ownerId);
+        const mainColor = winningOwner?.color || '#f59e0b';
+        const colors = [mainColor, '#ffffff', '#f59e0b', '#ec4899', '#3b82f6'];
+        
+        const duration = 5000;
+        const animationEnd = Date.now() + duration;
+        
+        const frame = () => {
+          const timeLeft = animationEnd - Date.now();
+          if (timeLeft <= 0) return;
+          
+          confetti({
+            particleCount: 3,
+            angle: 60,
+            spread: 55,
+            origin: { x: 0, y: 0.8 },
+            colors: colors
+          });
+          confetti({
+            particleCount: 3,
+            angle: 120,
+            spread: 55,
+            origin: { x: 1, y: 0.8 },
+            colors: colors
+          });
+          
+          requestAnimationFrame(frame);
+        };
+        
+        frame();
+        
+        // Auto dismiss celebration after 5 seconds
         const timer = setTimeout(() => {
           setShowCelebration(false);
-        }, 10000);
+        }, 5000);
 
         // Sync list
         prevSoldIdsRef.current = soldPlayers.map(p => p.id);

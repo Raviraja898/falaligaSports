@@ -279,7 +279,7 @@ export default function AdminPanel({ players, owners, bids, auctionState, onLogo
           } catch (err) {
             console.error('Error auto-starting next random player:', err);
           }
-        }, 1500);
+        }, 5000);
         
         return () => clearTimeout(timer);
       } else {
