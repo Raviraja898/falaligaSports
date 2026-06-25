@@ -12,7 +12,12 @@ import {
   Users, 
   ChevronRight, 
   Edit3, 
-  Star 
+  Star,
+  Lock,
+  Eye,
+  EyeOff,
+  Layers,
+  Sparkles
 } from 'lucide-react';
 
 interface OwnerDashboardProps {
@@ -32,6 +37,14 @@ export default function OwnerDashboard({
   selectedOwnerId,
   onSelectOwner,
 }: OwnerDashboardProps) {
+  const [dashboardTab, setDashboardTab] = useState<'arena' | 'won' | 'upcoming'>('arena');
+  
+  // Login flow states
+  const [loginOwnerId, setLoginOwnerId] = useState<string | null>(null);
+  const [loginPassword, setLoginPassword] = useState<string>('');
+  const [loginError, setLoginError] = useState<string | null>(null);
+  const [showPassword, setShowPassword] = useState<boolean>(false);
+
   const [bidAmount, setBidAmount] = useState<string>('');
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<boolean>(false);
@@ -39,14 +52,116 @@ export default function OwnerDashboard({
   // Find the selected owner details
   const owner = owners.find(o => o.id === selectedOwnerId);
 
+  // Check if owner is session authenticated
+  const isOwnerAuthenticated = selectedOwnerId ? localStorage.getItem(`authenticated_owner_${selectedOwnerId}`) === 'true' : false;
+
   // Active player on auction
   const activePlayer = players.find(p => p.id === auctionState.activePlayerId);
 
   // Checks if this owner has already submitted a bid for the active player
   const myBid = bids.find(b => b.playerId === auctionState.activePlayerId && b.ownerId === selectedOwnerId);
 
-  // Handle Team Login Selection
-  if (!selectedOwnerId || !owner) {
+  // Handle Team Login Selection with Password Protection
+  if (!selectedOwnerId || !isOwnerAuthenticated || !owner) {
+    const targetOwner = owners.find(o => o.id === (loginOwnerId || selectedOwnerId));
+    
+    if (targetOwner) {
+      // Show password prompt
+      const handleVerifyPassword = (e: React.FormEvent) => {
+        e.preventDefault();
+        setLoginError(null);
+        
+        const correctPassword = targetOwner.password || '1234';
+        if (loginPassword === correctPassword) {
+          // Log them in!
+          localStorage.setItem(`authenticated_owner_${targetOwner.id}`, 'true');
+          onSelectOwner(targetOwner.id);
+          setLoginPassword('');
+          setLoginOwnerId(null);
+        } else {
+          setLoginError('Incorrect password! Please try again or ask the Admin for help.');
+        }
+      };
+
+      return (
+        <div className="max-w-md mx-auto space-y-6 py-12">
+          <div className="bg-[#121212] border border-white/10 p-8 rounded-3xl shadow-xl space-y-6 text-center relative overflow-hidden">
+            <div className="absolute top-0 left-1/2 -translate-x-1/2 w-32 h-32 rounded-full blur-3xl opacity-10 pointer-events-none" style={{ backgroundColor: targetOwner.color }} />
+            
+            <div className="w-14 h-14 bg-white/5 rounded-2xl flex items-center justify-center mx-auto border border-white/10" style={{ color: targetOwner.color }}>
+              <Lock className="w-6 h-6" />
+            </div>
+
+            <div>
+              <h2 className="text-xl font-black text-slate-100 flex items-center justify-center gap-2">
+                Log in to {targetOwner.name}
+              </h2>
+              <p className="text-xs text-slate-400 mt-1.5 leading-relaxed">
+                Enter your crew's access password to access the bidding dashboard.
+              </p>
+            </div>
+
+            <form onSubmit={handleVerifyPassword} className="space-y-4 text-left">
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Access Password</label>
+                <div className="relative">
+                  <input
+                    type={showPassword ? "text" : "password"}
+                    value={loginPassword}
+                    onChange={(e) => setLoginPassword(e.target.value)}
+                    placeholder="Enter team password"
+                    className="w-full px-4 py-2.5 bg-black/40 border border-white/10 focus:border-amber-500 rounded-xl text-sm text-slate-100 focus:outline-none transition-all pr-10"
+                    required
+                    autoFocus
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 cursor-pointer animate-none"
+                  >
+                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+                {!targetOwner.password && (
+                  <p className="text-[10px] text-amber-400 mt-1 font-semibold">
+                    💡 Note: No password has been set yet. Try the default '1234'.
+                  </p>
+                )}
+              </div>
+
+              {loginError && (
+                <div className="p-3 bg-rose-500/10 border border-rose-500/20 text-rose-400 text-xs rounded-xl font-medium">
+                  {loginError}
+                </div>
+              )}
+
+              <div className="flex gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setLoginOwnerId(null);
+                    onSelectOwner(null);
+                    setLoginPassword('');
+                    setLoginError(null);
+                  }}
+                  className="flex-1 py-2.5 bg-white/5 hover:bg-white/10 text-slate-300 rounded-xl text-xs font-bold transition-all border border-white/10 cursor-pointer text-center"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="flex-1 py-2.5 bg-amber-500 hover:bg-amber-400 text-[#0a0a0a] rounded-xl text-xs font-black uppercase tracking-wider transition-all shadow-md cursor-pointer text-center"
+                >
+                  Verify Access
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      );
+    }
+
+    // Otherwise, show the selection list as before
     return (
       <div className="max-w-2xl mx-auto space-y-6">
         <div className="bg-[#121212] border border-white/10 p-8 rounded-2xl text-center shadow-xl space-y-6">
@@ -62,14 +177,14 @@ export default function OwnerDashboard({
             {owners.map(o => (
               <button
                 key={o.id}
-                onClick={() => onSelectOwner(o.id)}
+                onClick={() => setLoginOwnerId(o.id)}
                 className="flex items-center justify-between p-4 bg-black/40 hover:bg-white/5 border border-white/10 hover:border-amber-500/30 rounded-xl transition-all group text-left active:scale-[0.98] cursor-pointer"
               >
                 <div className="flex items-center gap-3">
                   <div className="w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: o.color }} />
                   <div>
                     <span className="text-sm font-bold text-slate-200 group-hover:text-amber-500 transition-colors">{o.name}</span>
-                    <span className="text-[10px] text-slate-500 block">Initial Wallet: 🪙 {o.wallet}</span>
+                    <span className="text-[10px] text-slate-500 block">Initial Wallet: 🪙 {(o.initialWallet || o.wallet).toLocaleString()}</span>
                   </div>
                 </div>
                 <ChevronRight className="w-4 h-4 text-slate-600 group-hover:text-amber-500 transition-colors" />
@@ -172,12 +287,16 @@ export default function OwnerDashboard({
             <Wallet className="w-4 h-4 text-amber-500" />
             <div>
               <span className="text-[10px] text-slate-500 uppercase block tracking-wider font-semibold">Remaining Wallet</span>
-              <span className="text-sm font-mono text-amber-400 font-bold">🪙 {owner.wallet} coins</span>
+              <span className="text-sm font-mono text-amber-400 font-bold">🪙 {owner.wallet.toLocaleString()} coins</span>
             </div>
           </div>
 
           <button
-            onClick={() => onSelectOwner(null)}
+            onClick={() => {
+              // Clear browser session authentication on logout
+              localStorage.removeItem(`authenticated_owner_${selectedOwnerId}`);
+              onSelectOwner(null);
+            }}
             className="p-2.5 bg-white/5 hover:bg-rose-950/20 text-slate-400 hover:text-rose-400 border border-white/10 hover:border-rose-950 rounded-xl text-xs transition-all cursor-pointer"
             title="Leave Team / Switch Team"
           >
@@ -186,7 +305,50 @@ export default function OwnerDashboard({
         </div>
       </div>
 
-      {/* Main Grid: Active Bidder & Roster */}
+      {/* Navigation Tabs */}
+      <div className="flex border-b border-white/10 pb-1 gap-4">
+        <button
+          onClick={() => setDashboardTab('arena')}
+          className={`pb-3 text-sm font-bold border-b-2 transition-all relative cursor-pointer ${
+            dashboardTab === 'arena'
+              ? 'border-amber-500 text-amber-400 font-black'
+              : 'border-transparent text-slate-400 hover:text-slate-200'
+          }`}
+        >
+          <span className="flex items-center gap-1.5">
+            <Trophy className="w-4 h-4" /> Bidding Arena
+            {activePlayer && <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />}
+          </span>
+        </button>
+
+        <button
+          onClick={() => setDashboardTab('won')}
+          className={`pb-3 text-sm font-bold border-b-2 transition-all relative cursor-pointer ${
+            dashboardTab === 'won'
+              ? 'border-amber-500 text-amber-400 font-black'
+              : 'border-transparent text-slate-400 hover:text-slate-200'
+          }`}
+        >
+          <span className="flex items-center gap-1.5">
+            <Users className="w-4 h-4" /> My Won Squad ({myRoster.length})
+          </span>
+        </button>
+
+        <button
+          onClick={() => setDashboardTab('upcoming')}
+          className={`pb-3 text-sm font-bold border-b-2 transition-all relative cursor-pointer ${
+            dashboardTab === 'upcoming'
+              ? 'border-amber-500 text-amber-400 font-black'
+              : 'border-transparent text-slate-400 hover:text-slate-200'
+          }`}
+        >
+          <span className="flex items-center gap-1.5">
+            <Layers className="w-4 h-4" /> Upcoming Draft Pool ({players.filter(p => p.status === 'AVAILABLE').length})
+          </span>
+        </button>
+      </div>
+
+      {dashboardTab === 'arena' && (
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         
         {/* Left Column: Player on Auction & Place Bid Form */}
@@ -393,6 +555,104 @@ export default function OwnerDashboard({
           <RulesBoard />
         </div>
       </div>
+      )}
+
+      {/* Won Tab View */}
+      {dashboardTab === 'won' && (
+        <div className="space-y-6 animate-fade-in">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div>
+              <h3 className="text-lg font-bold text-slate-100 flex items-center gap-2">
+                <Trophy className="w-5 h-5 text-amber-500" /> My Recruited Squad
+              </h3>
+              <p className="text-xs text-slate-400">Review all the competitors your crew has successfully acquired in the auction</p>
+            </div>
+
+            <div className="flex gap-2">
+              <div className="bg-black/30 border border-white/5 px-3 py-1.5 rounded-xl text-center">
+                <span className="text-[9px] text-slate-500 font-bold uppercase block">Roster Size</span>
+                <span className="text-xs font-bold text-slate-300">
+                  {myRoster.length} / {auctionState.maxTeamSize || 15}
+                </span>
+              </div>
+              <div className="bg-[#10b981]/10 border border-[#10b981]/20 px-3 py-1.5 rounded-xl text-center">
+                <span className="text-[9px] text-[#10b981] font-bold uppercase block">Girls Recruited</span>
+                <span className="text-xs font-bold text-emerald-400">
+                  {myRoster.filter(p => p.gender === 'Female').length} / {auctionState.minGirlsCount || 4}
+                </span>
+              </div>
+              <div className="bg-[#f59e0b]/10 border border-[#f59e0b]/20 px-3 py-1.5 rounded-xl text-center">
+                <span className="text-[9px] text-[#f59e0b] font-bold uppercase block">Total Spent</span>
+                <span className="text-xs font-bold text-amber-400">
+                  🪙 {totalSpent.toLocaleString()}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {myRoster.length === 0 ? (
+            <div className="bg-[#121212]/50 border border-dashed border-white/10 rounded-3xl p-16 text-center text-slate-500">
+              <Users className="w-10 h-10 mx-auto mb-3 text-slate-600" />
+              <p className="text-sm font-semibold text-slate-400">Your squad is currently empty</p>
+              <p className="text-xs text-slate-500 mt-1 max-w-sm mx-auto">
+                Once you place winning blind bids on competitors, they will appear here as members of your corporate esports squad.
+              </p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+              {myRoster.map(player => (
+                <div key={player.id} className="bg-[#121212] border border-white/10 rounded-2xl overflow-hidden flex flex-col justify-between">
+                  <PlayerCard player={player} owners={owners} />
+                  <div className="bg-amber-500/10 p-3 border-t border-white/5 flex justify-between items-center text-xs">
+                    <span className="text-amber-400 font-bold">Winning Bid Amount:</span>
+                    <span className="font-mono text-amber-400 font-black">🪙 {player.winningBid?.toLocaleString()}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Upcoming Tab View */}
+      {dashboardTab === 'upcoming' && (
+        <div className="space-y-6 animate-fade-in">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div>
+              <h3 className="text-lg font-bold text-slate-100 flex items-center gap-2">
+                <Layers className="w-5 h-5 text-amber-500" /> Upcoming Draft Pool
+              </h3>
+              <p className="text-xs text-slate-400">Preview details and stats for the upcoming players yet to be put up for bidding</p>
+            </div>
+          </div>
+
+          {(() => {
+            const upcomingPlayers = players.filter(p => p.status === 'AVAILABLE' || p.status === 'UNSOLD');
+            
+            return upcomingPlayers.length === 0 ? (
+              <div className="bg-[#121212]/50 border border-dashed border-white/10 rounded-3xl p-16 text-center text-slate-500">
+                <Sparkles className="w-10 h-10 mx-auto mb-3 text-slate-600" />
+                <p className="text-sm font-semibold text-slate-400">Draft Pool is Exhausted</p>
+                <p className="text-xs text-slate-500 mt-1 max-w-sm mx-auto">
+                  All available competitors have been put up for auction! Look at the 'Won' list to see the finalized squads.
+                </p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+                {upcomingPlayers.map(player => (
+                  <div key={player.id} className="bg-[#121212] border border-white/10 rounded-2xl overflow-hidden flex flex-col justify-between">
+                    <PlayerCard player={player} owners={owners} />
+                    <div className="bg-[#0a0a0a] p-3 border-t border-white/5 flex justify-between items-center text-xs">
+                      <span className="text-slate-400">Base Bid Required:</span>
+                      <span className="font-mono text-amber-400 font-bold">🪙 {player.basePrice?.toLocaleString()}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            );
+          })()}
+        </div>
+      )}
     </div>
   );
 }

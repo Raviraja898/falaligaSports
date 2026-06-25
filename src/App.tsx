@@ -10,7 +10,8 @@ import { seedDatabase } from './dbHelper';
 import AdminPanel from './components/AdminPanel';
 import OwnerDashboard from './components/OwnerDashboard';
 import AdminLogin from './components/AdminLogin';
-import { Trophy, Users, ShieldAlert, Star, Sparkles, HelpCircle } from 'lucide-react';
+import { Trophy, Users, ShieldAlert, Star, Sparkles, HelpCircle, Search, SlidersHorizontal } from 'lucide-react';
+import { PlayerCard } from './components/CommonUI';
 
 // Simple stable hash function to randomize player display order deterministically (prevents re-render jumps)
 const getStableRandomValue = (id: string) => {
@@ -26,6 +27,11 @@ export default function App() {
   const [players, setPlayers] = useState<Player[]>([]);
   const [owners, setOwners] = useState<Owner[]>([]);
   const [bids, setBids] = useState<Bid[]>([]);
+  
+  // Home page showcase state
+  const [showcaseSearch, setShowcaseSearch] = useState('');
+  const [showcaseGender, setShowcaseGender] = useState<'ALL' | 'Female' | 'Male'>('ALL');
+  const [showcaseStatus, setShowcaseStatus] = useState<'ALL' | 'AVAILABLE' | 'SOLD' | 'UNSOLD'>('ALL');
   const [auctionState, setAuctionState] = useState<AuctionState>({
     activePlayerId: null,
     status: 'IDLE',
@@ -293,6 +299,130 @@ export default function App() {
               </div>
 
             </div>
+
+            {/* Live Draft Pool Showcase */}
+            <div className="border-t border-white/10 pt-10 space-y-6">
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div>
+                  <h3 className="text-xl font-bold text-white tracking-tight flex items-center gap-2">
+                    <Trophy className="w-5 h-5 text-amber-500" /> Live Draft Pool Showcase
+                  </h3>
+                  <p className="text-xs text-slate-400 mt-1">Real-time status of all corporate competitors and draft allocations</p>
+                </div>
+
+                {/* Filter / Search stats */}
+                <div className="text-xs font-semibold px-3 py-1.5 bg-white/5 rounded-xl border border-white/10 text-slate-400">
+                  Total Pool: <span className="text-slate-200">{players.length} Players</span> | Sold: <span className="text-emerald-400">{players.filter(p => p.status === 'SOLD').length}</span>
+                </div>
+              </div>
+
+              {/* Filters Panel */}
+              <div className="bg-[#121212] border border-white/10 p-5 rounded-2xl space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-12 gap-3">
+                  {/* Search bar */}
+                  <div className="md:col-span-6 relative">
+                    <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
+                    <input
+                      type="text"
+                      value={showcaseSearch}
+                      onChange={(e) => setShowcaseSearch(e.target.value)}
+                      placeholder="Search player name or role..."
+                      className="w-full pl-10 pr-4 py-2 bg-black/40 border border-white/10 focus:border-amber-500 rounded-xl text-xs focus:outline-none transition-all placeholder:text-slate-500 text-slate-200 font-medium"
+                    />
+                  </div>
+
+                  {/* Gender Filter */}
+                  <div className="md:col-span-3 flex bg-black/40 border border-white/10 p-1 rounded-xl">
+                    <button
+                      onClick={() => setShowcaseGender('ALL')}
+                      className={`flex-1 py-1 text-[10px] font-bold rounded-lg transition-all cursor-pointer ${
+                        showcaseGender === 'ALL' ? 'bg-amber-500 text-[#0a0a0a]' : 'text-slate-400 hover:text-slate-200'
+                      }`}
+                    >
+                      All
+                    </button>
+                    <button
+                      onClick={() => setShowcaseGender('Female')}
+                      className={`flex-1 py-1 text-[10px] font-bold rounded-lg transition-all cursor-pointer ${
+                        showcaseGender === 'Female' ? 'bg-pink-500/20 text-pink-400 border border-pink-500/30 font-extrabold' : 'text-slate-400 hover:text-slate-200'
+                      }`}
+                    >
+                      👩 Girls
+                    </button>
+                    <button
+                      onClick={() => setShowcaseGender('Male')}
+                      className={`flex-1 py-1 text-[10px] font-bold rounded-lg transition-all cursor-pointer ${
+                        showcaseGender === 'Male' ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30 font-extrabold' : 'text-slate-400 hover:text-slate-200'
+                      }`}
+                    >
+                      👨 Boys
+                    </button>
+                  </div>
+
+                  {/* Status Filter */}
+                  <div className="md:col-span-3 flex bg-black/40 border border-white/10 p-1 rounded-xl">
+                    <button
+                      onClick={() => setShowcaseStatus('ALL')}
+                      className={`flex-1 py-1 text-[10px] font-bold rounded-lg transition-all cursor-pointer ${
+                        showcaseStatus === 'ALL' ? 'bg-amber-500 text-[#0a0a0a]' : 'text-slate-400 hover:text-slate-200'
+                      }`}
+                    >
+                      All
+                    </button>
+                    <button
+                      onClick={() => setShowcaseStatus('AVAILABLE')}
+                      className={`flex-1 py-1 text-[10px] font-bold rounded-lg transition-all cursor-pointer ${
+                        showcaseStatus === 'AVAILABLE' ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30 font-extrabold' : 'text-slate-400 hover:text-slate-200'
+                      }`}
+                    >
+                      Ready
+                    </button>
+                    <button
+                      onClick={() => setShowcaseStatus('SOLD')}
+                      className={`flex-1 py-1 text-[10px] font-bold rounded-lg transition-all cursor-pointer ${
+                        showcaseStatus === 'SOLD' ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 font-extrabold' : 'text-slate-400 hover:text-slate-200'
+                      }`}
+                    >
+                      Sold
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Showcase Grid */}
+              {(() => {
+                const filtered = players.filter(player => {
+                  const matchSearch = player.name.toLowerCase().includes(showcaseSearch.toLowerCase()) || 
+                                      player.role.toLowerCase().includes(showcaseSearch.toLowerCase());
+                  const matchGender = showcaseGender === 'ALL' || player.gender === showcaseGender;
+                  const matchStatus = showcaseStatus === 'ALL' || player.status === showcaseStatus;
+                  return matchSearch && matchGender && matchStatus;
+                });
+
+                if (filtered.length === 0) {
+                  return (
+                    <div className="p-12 text-center text-slate-500 border border-dashed border-white/10 rounded-2xl text-xs bg-[#121212]/30">
+                      No matching players found in the draft pool. Try adjusting your search or filters!
+                    </div>
+                  );
+                }
+
+                return (
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+                    {filtered.map(player => (
+                      <div key={player.id}>
+                        <PlayerCard 
+                          player={player} 
+                          owners={owners} 
+                          isActive={player.id === auctionState.activePlayerId} 
+                        />
+                      </div>
+                    ))}
+                  </div>
+                );
+              })()}
+            </div>
+
           </div>
         )}
 

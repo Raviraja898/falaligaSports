@@ -1,6 +1,7 @@
 import { 
   collection, 
   doc, 
+  getDoc,
   getDocs, 
   setDoc, 
   updateDoc, 
@@ -197,4 +198,130 @@ export async function addOwner(owner: Owner) {
 export async function deleteBid(playerId: string, ownerId: string) {
   const bidId = `${playerId}_${ownerId}`;
   await deleteDoc(doc(db, 'bids', bidId));
+}
+
+// Delete a player and handle budget refunds if sold
+export async function deletePlayer(playerId: string) {
+  const batch = writeBatch(db);
+  const playerRef = doc(db, 'players', playerId);
+  const playerSnap = await getDoc(playerRef);
+  
+  if (playerSnap.exists()) {
+    const playerData = playerSnap.data() as Player;
+    if (playerData.status === 'SOLD' && playerData.ownerId && playerData.winningBid) {
+      const ownerRef = doc(db, 'owners', playerData.ownerId);
+      const ownerSnap = await getDoc(ownerRef);
+      if (ownerSnap.exists()) {
+        const ownerData = ownerSnap.data() as Owner;
+        batch.update(ownerRef, {
+          wallet: (ownerData.wallet || 0) + playerData.winningBid
+        });
+      }
+    }
+    batch.delete(playerRef);
+  }
+  
+  // Clear bids for this player
+  const bidsSnap = await getDocs(query(collection(db, 'bids'), where('playerId', '==', playerId)));
+  bidsSnap.forEach((d) => {
+    batch.delete(doc(db, 'bids', d.id));
+  });
+  
+  // Reset active player if it was this player
+  const statusRef = doc(db, 'auction', 'status');
+  const statusSnap = await getDoc(statusRef);
+  if (statusSnap.exists()) {
+    const statusData = statusSnap.data() as AuctionState;
+    if (statusData.activePlayerId === playerId) {
+      batch.update(statusRef, {
+        activePlayerId: null,
+        status: 'IDLE',
+        tiedOwners: [],
+        originalWinningAmount: 0
+      });
+    }
+  }
+  
+  await batch.commit();
+}
+
+// Delete an owner and reset their won players
+export async function deleteOwner(ownerId: string) {
+  const batch = writeBatch(db);
+  const ownerRef = doc(db, 'owners', ownerId);
+  batch.delete(ownerRef);
+  
+  // Reset players won by this owner
+  const playersSnap = await getDocs(query(collection(db, 'players'), where('ownerId', '==', ownerId)));
+  playersSnap.forEach((d) => {
+    batch.update(doc(db, 'players', d.id), {
+      status: 'AVAILABLE',
+      ownerId: null,
+      winningBid: null
+    });
+  });
+  
+  // Clear bids placed by this owner
+  const bidsSnap = await getDocs(query(collection(db, 'bids'), where('ownerId', '==', ownerId)));
+  bidsSnap.forEach((d) => {
+    batch.delete(doc(db, 'bids', d.id));
+  });
+  
+  await batch.commit();
+}
+
+// Restart player's bid to AVAILABLE and refund wallet if sold
+export async function restartPlayerBid(playerId: string) {
+  const batch = writeBatch(db);
+  const playerRef = doc(db, 'players', playerId);
+  const playerSnap = await getDoc(playerRef);
+  
+  if (playerSnap.exists()) {
+    const playerData = playerSnap.data() as Player;
+    if (playerData.status === 'SOLD' && playerData.ownerId && playerData.winningBid) {
+      const ownerRef = doc(db, 'owners', playerData.ownerId);
+      const ownerSnap = await getDoc(ownerRef);
+      if (ownerSnap.exists()) {
+        const ownerData = ownerSnap.data() as Owner;
+        batch.update(ownerRef, {
+          wallet: (ownerData.wallet || 0) + playerData.winningBid
+        });
+      }
+    }
+    
+    batch.update(playerRef, {
+      status: 'AVAILABLE',
+      ownerId: null,
+      winningBid: null
+    });
+  }
+  
+  // Clear bids for this player
+  const bidsSnap = await getDocs(query(collection(db, 'bids'), where('playerId', '==', playerId)));
+  bidsSnap.forEach((d) => {
+    batch.delete(doc(db, 'bids', d.id));
+  });
+  
+  // Reset active player if it was this player
+  const statusRef = doc(db, 'auction', 'status');
+  const statusSnap = await getDoc(statusRef);
+  if (statusSnap.exists()) {
+    const statusData = statusSnap.data() as AuctionState;
+    if (statusData.activePlayerId === playerId) {
+      batch.update(statusRef, {
+        activePlayerId: null,
+        status: 'IDLE',
+        tiedOwners: [],
+        originalWinningAmount: 0
+      });
+    }
+  }
+  
+  await batch.commit();
+}
+
+// Set owner password
+export async function updateOwnerPassword(ownerId: string, password: string) {
+  const ownerRef = doc(db, 'owners', ownerId);
+  await updateDoc(ownerRef, { password });
 }

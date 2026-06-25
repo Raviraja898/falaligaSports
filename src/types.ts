@@ -24,6 +24,7 @@ export interface Owner {
   color: string; // hex or tailwind class for team styling
   wallet: number; // remaining budget (starts at e.g. 1000)
   initialWallet: number;
+  password?: string;
 }
 
 export interface Bid {

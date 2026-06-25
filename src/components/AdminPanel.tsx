@@ -9,7 +9,11 @@ import {
   startTieResolution,
   addPlayer,
   addOwner,
-  updateAuctionSettings
+  updateAuctionSettings,
+  deletePlayer,
+  deleteOwner,
+  restartPlayerBid,
+  updateOwnerPassword
 } from '../dbHelper';
 import { PlayerCard, TieBreakerTool } from './CommonUI';
 import { 
@@ -32,7 +36,11 @@ import {
   ShieldCheck,
   Settings,
   Flame,
-  CheckSquare
+  CheckSquare,
+  Trash2,
+  RotateCcw,
+  Key,
+  EyeOff
 } from 'lucide-react';
 
 interface AdminPanelProps {
@@ -46,6 +54,10 @@ interface AdminPanelProps {
 export default function AdminPanel({ players, owners, bids, auctionState, onLogout }: AdminPanelProps) {
   const [resetting, setResetting] = useState(false);
   const [activeTab, setActiveTab] = useState<'auction' | 'players' | 'rosters' | 'manage'>('auction');
+
+  // Password management states
+  const [passwordsState, setPasswordsState] = useState<Record<string, string>>({});
+  const [passwordVisibility, setPasswordVisibility] = useState<Record<string, boolean>>({});
 
   // Config settings state
   const [configMaxTeamSize, setConfigMaxTeamSize] = useState(auctionState.maxTeamSize || 15);
@@ -165,6 +177,55 @@ export default function AdminPanel({ players, owners, bids, auctionState, onLogo
       setTimeout(() => setOwnerSuccessMsg(''), 4000);
     } catch (err) {
       console.error('Failed to add owner:', err);
+    }
+  };
+
+  // Handle Delete Player
+  const handleDeletePlayerClick = async (playerId: string, name: string) => {
+    if (confirm(`Are you absolutely sure you want to delete "${name}"? If they were sold, their winning bid will be refunded to their owner's wallet.`)) {
+      try {
+        await deletePlayer(playerId);
+      } catch (err) {
+        console.error('Failed to delete player:', err);
+      }
+    }
+  };
+
+  // Handle Restart Bid
+  const handleRestartPlayerBidClick = async (playerId: string, name: string) => {
+    if (confirm(`Do you want to restart the bidding process for "${name}"? Status will be reset to AVAILABLE and any spent coins will be refunded.`)) {
+      try {
+        await restartPlayerBid(playerId);
+      } catch (err) {
+        console.error('Failed to restart bid:', err);
+      }
+    }
+  };
+
+  // Handle Delete Owner
+  const handleDeleteOwnerClick = async (ownerId: string, name: string) => {
+    if (confirm(`Are you absolutely sure you want to delete Team Owner "${name}"?\n\nWARNING: All players won by this team will be returned to the AVAILABLE pool!`)) {
+      try {
+        await deleteOwner(ownerId);
+      } catch (err) {
+        console.error('Failed to delete owner:', err);
+      }
+    }
+  };
+
+  // Handle Update Owner Password
+  const handleUpdateOwnerPasswordClick = async (ownerId: string, teamName: string) => {
+    const pass = passwordsState[ownerId]?.trim() || '';
+    if (!pass) {
+      alert('Please enter a valid password.');
+      return;
+    }
+    try {
+      await updateOwnerPassword(ownerId, pass);
+      alert(`Successfully set password for team "${teamName}" to: ${pass}`);
+    } catch (err) {
+      console.error('Failed to update password:', err);
+      alert('Error updating password.');
     }
   };
 
@@ -628,20 +689,59 @@ export default function AdminPanel({ players, owners, bids, auctionState, onLogo
             {players.map(player => {
               const canAuction = player.status === 'AVAILABLE' || player.status === 'UNSOLD';
               return (
-                <div key={player.id} className="relative group">
-                  <PlayerCard player={player} owners={owners} />
-                  
-                  {canAuction && !auctionState.activePlayerId && (
-                    <div className="absolute inset-0 bg-black/85 backdrop-blur-sm rounded-2xl flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-200">
-                      <button
-                        onClick={() => handleStartAuction(player.id)}
-                        className="px-5 py-2.5 bg-amber-500 hover:bg-amber-400 text-[#0a0a0a] rounded-xl text-xs font-extrabold uppercase tracking-wider shadow-lg transform translate-y-2 group-hover:translate-y-0 transition-all duration-200 flex items-center gap-1.5 cursor-pointer"
-                      >
-                        <Play className="w-3.5 h-3.5 fill-current text-slate-950" />
-                        Start Auction Bidding
-                      </button>
+                <div key={player.id} className="bg-[#121212] border border-white/10 rounded-2xl overflow-hidden flex flex-col justify-between group">
+                  <div className="relative flex-1">
+                    <PlayerCard player={player} owners={owners} />
+                    
+                    {canAuction && !auctionState.activePlayerId && (
+                      <div className="absolute inset-0 bg-black/85 backdrop-blur-sm rounded-2xl flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-200">
+                        <button
+                          onClick={() => handleStartAuction(player.id)}
+                          className="px-5 py-2.5 bg-amber-500 hover:bg-amber-400 text-[#0a0a0a] rounded-xl text-xs font-extrabold uppercase tracking-wider shadow-lg transform translate-y-2 group-hover:translate-y-0 transition-all duration-200 flex items-center gap-1.5 cursor-pointer"
+                        >
+                          <Play className="w-3.5 h-3.5 fill-current text-slate-950" />
+                          Start Auction Bidding
+                        </button>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Admin Control Tray */}
+                  <div className="bg-black/40 p-3 border-t border-white/5 flex gap-2 items-center justify-between">
+                    <div className="flex gap-2">
+                      {/* Restart Bid Button */}
+                      {(player.status === 'SOLD' || player.status === 'UNSOLD') && (
+                        <button
+                          onClick={() => handleRestartPlayerBidClick(player.id, player.name)}
+                          className="px-2.5 py-1.5 bg-amber-500/15 hover:bg-amber-500 hover:text-slate-950 border border-amber-500/30 text-amber-400 rounded-xl text-[11px] font-bold transition-all flex items-center gap-1 cursor-pointer"
+                          title="Restart Bidding for Player"
+                        >
+                          <RotateCcw className="w-3.5 h-3.5" />
+                          Restart Bid
+                        </button>
+                      )}
+
+                      {/* Start Bidding Button if available */}
+                      {canAuction && !auctionState.activePlayerId && (
+                        <button
+                          onClick={() => handleStartAuction(player.id)}
+                          className="px-2.5 py-1.5 bg-emerald-500/15 hover:bg-emerald-500 hover:text-slate-950 border border-emerald-500/30 text-emerald-400 rounded-xl text-[11px] font-bold transition-all flex items-center gap-1 cursor-pointer md:hidden"
+                        >
+                          <Play className="w-3.5 h-3.5 fill-current" />
+                          Start Bid
+                        </button>
+                      )}
                     </div>
-                  )}
+
+                    <button
+                      onClick={() => handleDeletePlayerClick(player.id, player.name)}
+                      className="px-2.5 py-1.5 bg-rose-500/15 hover:bg-rose-500 hover:text-white border border-rose-500/30 text-rose-400 rounded-xl text-[11px] font-bold transition-all flex items-center gap-1 cursor-pointer ml-auto"
+                      title="Delete Player From Pool"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                      Delete
+                    </button>
+                  </div>
                 </div>
               );
             })}
@@ -669,9 +769,18 @@ export default function AdminPanel({ players, owners, bids, auctionState, onLogo
                   className="bg-[#121212] border border-white/10 rounded-2xl p-4 shadow-md flex flex-col justify-between"
                 >
                   <div>
-                    <div className="flex items-center gap-2 mb-3">
-                      <div className="w-3.5 h-3.5 rounded-full" style={{ backgroundColor: owner.color }} />
-                      <h3 className="font-bold text-slate-100 text-sm truncate">{owner.name}</h3>
+                    <div className="flex items-center justify-between gap-2 mb-3">
+                      <div className="flex items-center gap-2 truncate">
+                        <div className="w-3.5 h-3.5 rounded-full flex-shrink-0" style={{ backgroundColor: owner.color }} />
+                        <h3 className="font-bold text-slate-100 text-sm truncate">{owner.name}</h3>
+                      </div>
+                      <button
+                        onClick={() => handleDeleteOwnerClick(owner.id, owner.name)}
+                        className="p-1 text-slate-500 hover:text-rose-400 hover:bg-rose-500/10 rounded-lg transition-all cursor-pointer"
+                        title="Delete Team Owner"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
                     </div>
 
                     <div className="space-y-1.5 text-xs text-slate-400 mb-4 bg-black/40 p-2.5 rounded-lg border border-white/5">
@@ -1127,6 +1236,73 @@ export default function AdminPanel({ players, owners, bids, auctionState, onLogo
           </div>
 
         </div>
+
+        {/* Team Owner Passwords Section */}
+        <div className="bg-[#121212] border border-white/10 p-6 rounded-3xl shadow-xl space-y-6">
+          <div className="flex items-center gap-2.5 pb-4 border-b border-white/5">
+            <div className="w-9 h-9 rounded-xl bg-amber-500/10 text-amber-500 border border-amber-500/20 flex items-center justify-center">
+              <Key className="w-5 h-5 text-amber-500" />
+            </div>
+            <div>
+              <h2 className="text-base font-bold text-slate-100">Team Owner Passwords & Accounts</h2>
+              <p className="text-xs text-slate-400">Set custom access passwords for team owners to log in securely to their dashboards</p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {owners.map(owner => {
+              const hasPassword = !!owner.password;
+              const isVisible = !!passwordVisibility[owner.id];
+              
+              return (
+                <div key={owner.id} className="bg-black/30 p-4 rounded-2xl border border-white/5 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                  <div className="flex items-center gap-3">
+                    <div className="w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: owner.color }} />
+                    <div>
+                      <span className="text-sm font-bold text-slate-200 block">{owner.name}</span>
+                      <span className="text-[10px] text-slate-500 block">
+                        Status: {hasPassword ? (
+                          <span className="text-emerald-400 font-bold">● Password Active</span>
+                        ) : (
+                          <span className="text-amber-400 font-bold">● Default Active ('1234')</span>
+                        )}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2 flex-1 md:max-w-[280px]">
+                    <div className="relative flex-1">
+                      <input
+                        type={isVisible ? "text" : "password"}
+                        value={passwordsState[owner.id] !== undefined ? passwordsState[owner.id] : (owner.password || '')}
+                        onChange={(e) => setPasswordsState({ ...passwordsState, [owner.id]: e.target.value })}
+                        placeholder="Set custom password"
+                        className="w-full px-3 py-2 bg-[#0a0a0a] border border-white/10 focus:border-amber-500 rounded-xl text-xs text-slate-100 focus:outline-none transition-all pr-8"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setPasswordVisibility({ ...passwordVisibility, [owner.id]: !isVisible })}
+                        className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 cursor-pointer"
+                      >
+                        {isVisible ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                      </button>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => handleUpdateOwnerPasswordClick(owner.id, owner.name)}
+                      className="px-3 py-2 bg-amber-500 hover:bg-amber-400 text-[#0a0a0a] rounded-xl text-xs font-bold transition-all cursor-pointer shadow flex items-center gap-1.5"
+                    >
+                      <CheckSquare className="w-3.5 h-3.5" />
+                      Save
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
       </div>
       )}
     </div>
