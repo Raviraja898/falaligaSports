@@ -50,7 +50,7 @@ function FlippingCard({ player, owners, isBidding, isReading, onFlipNow }: { pla
         </div>
         
         {/* Back Face of the Card */}
-        <div className="absolute inset-0 backface-hidden w-full h-full rotate-y-180 bg-[#0c0c0e] border-2 border-fala-magenta/30 rounded-3xl flex flex-col items-center justify-end text-center shadow-2xl relative overflow-hidden">
+        <div className="absolute inset-0 backface-hidden w-full h-full rotate-y-180 bg-[#0c0c0e] border-2 border-fala-magenta/30 rounded-2xl flex flex-col items-center justify-end text-center shadow-2xl relative overflow-hidden">
           {/* Main big image showing active competitor's actual image/placeholder during rotation */}
           {player.photoUrl && (player.photoUrl.startsWith('http') || player.photoUrl.startsWith('/')) ? (
             <img 
@@ -553,7 +553,7 @@ export default function App() {
             <div>
               <div className="flex items-center gap-2">
                 <h1 className="font-black text-sm tracking-tight text-white uppercase flex items-center gap-1.5 font-display">
-                  Falabella Tournaments
+                  Falabella Auction 4.0
                 </h1>
                 <div className="flex items-center gap-1 bg-black/40 px-2 py-1 rounded-full border border-white/10">
                   <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: '#8e9099' }} title="Falabella Silver" />
@@ -635,115 +635,13 @@ export default function App() {
 
             {/* Active Live Bidding Showcase */}
             {activePlayer ? (
-              <div className="bg-gradient-to-b from-[#111111] to-[#050505] border-2 border-fala-blue/30 p-8 rounded-3xl shadow-2xl relative overflow-hidden max-w-4xl mx-auto">
-                <div className="absolute top-0 right-0 w-32 h-32 bg-fala-blue/5 rounded-full blur-3xl pointer-events-none" />
-                <div className="absolute bottom-0 left-0 w-32 h-32 bg-fala-blue/5 rounded-full blur-3xl pointer-events-none" />
-                
-                <div className="grid grid-cols-1 md:grid-cols-12 gap-8 items-start">
-                  {/* Left Column: Flipping Card */}
-                  <div className="md:col-span-5 flex justify-center pb-6 md:pb-0">
-                    <FlippingCard 
-                      player={activePlayer} 
-                      owners={owners} 
-                      isBidding={auctionState.status === 'BIDDING'} 
-                      isReading={isReadingMode}
-                      onFlipNow={() => setIsReadingMode(false)}
-                    />
-                  </div>
-
-                  {/* Right Column: Status & Real-time Info */}
-                  <div className="md:col-span-7 space-y-6">
-                    {isReadingMode ? (
-                      <div className="space-y-6">
-                        <div className="space-y-2">
-                          <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-fala-blue/10 border border-fala-blue/20 text-fala-blue text-[10px] font-black uppercase tracking-widest rounded-full">
-                            <span className="w-2 h-2 rounded-full bg-fala-blue animate-ping" /> Introducing Competitor
-                          </div>
-                          <h2 className="text-3xl font-black text-white tracking-tight leading-none uppercase font-display">
-                            SPOTLIGHT REVEAL
-                          </h2>
-                          <p className="text-xs text-slate-400">
-                            Review the competitor's specialties, ratings, and stats on the left. Bidding activates automatically when the timer expires!
-                          </p>
-                        </div>
-
-                        {/* Large Visual Progress Countdown */}
-                        <div className="bg-white/5 border border-white/10 rounded-2xl p-6 space-y-4">
-                          <div className="flex items-center justify-between">
-                            <span className="text-xs font-black uppercase tracking-widest text-slate-400">Time to Read Profile</span>
-                            <span className="font-mono text-2xl font-black text-fala-blue animate-pulse">{readingSecondsLeft}s</span>
-                          </div>
-                          <div className="w-full bg-white/5 h-2 rounded-full overflow-hidden">
-                            <motion.div 
-                              className="h-full bg-gradient-to-r from-fala-blue to-fala-green"
-                              initial={{ width: '100%' }}
-                              animate={{ width: `${(readingSecondsLeft / 15) * 100}%` }}
-                              transition={{ duration: 1, ease: 'linear' }}
-                            />
-                          </div>
-                          <p className="text-[11px] text-slate-500 leading-normal italic">
-                            "The card is kept flat and detailed so viewers on the shared TV can analyze the competitor's stats before secret blind bids are accepted."
-                          </p>
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="space-y-6">
-                        <div className="space-y-2">
-                          <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-fala-magenta/10 border border-fala-magenta/20 text-fala-magenta text-[10px] font-black uppercase tracking-widest rounded-full">
-                            <span className="w-2 h-2 rounded-full bg-fala-magenta animate-pulse" /> Live Arena Feed
-                          </div>
-                          <h2 className="text-3xl font-black text-white tracking-tight leading-none font-display">
-                            {auctionState.status === 'BIDDING' ? 'BIDDING IN PROGRESS...' : 'BIDS REVEALED!'}
-                          </h2>
-                          <p className="text-xs text-slate-400">
-                            {auctionState.status === 'BIDDING' 
-                              ? 'Team owners are placing secret blind bids. Card is spinning continuously!' 
-                              : 'Admin has closed bidding. Below are the bids submitted for this competitor.'}
-                          </p>
-                        </div>
-
-                        {/* Show bids in real time or hidden */}
-                        <div className="bg-black/40 border border-white/5 rounded-2xl p-5 space-y-4">
-                          <h3 className="text-xs font-bold text-slate-300 uppercase tracking-wider flex items-center justify-between font-display">
-                            <span>Submitted Team Bids</span>
-                            <span className="text-[10px] font-mono text-slate-500">
-                              {bids.filter(b => b.playerId === activePlayer.id).length} / {owners.length} Bids
-                            </span>
-                          </h3>
-
-                          <div className="space-y-2">
-                            {owners.map(owner => {
-                              const bid = bids.find(b => b.playerId === activePlayer.id && b.ownerId === owner.id);
-                              const isRevealed = auctionState.status === 'REVEALED';
-                              
-                              return (
-                                <div key={owner.id} className="flex items-center justify-between p-3 bg-white/5 rounded-xl border border-white/5">
-                                  <div className="flex items-center gap-2.5">
-                                    <span className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: owner.color }} />
-                                    <span className="text-xs font-extrabold text-slate-200">{owner.name}</span>
-                                  </div>
-                                  <div className="font-mono text-xs font-bold">
-                                    {bid ? (
-                                      isRevealed ? (
-                                        <span className="text-fala-green">🪙 {bid.amount.toLocaleString()}</span>
-                                      ) : (
-                                        <span className="text-emerald-400 flex items-center gap-1">
-                                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping" /> BID PLACED
-                                        </span>
-                                      )
-                                    ) : (
-                                      <span className="text-slate-600">NO BID</span>
-                                    )}
-                                  </div>
-                                </div>
-                              );
-                            })}
-                          </div>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </div>
+              <div className="max-w-5xl mx-auto animate-fade-in relative">
+                {/* Continuous visual sparkles/celebratory glow if the active player was just marked SOLD */}
+                {(() => {
+                  const winningOwner = activePlayer.ownerId ? owners.find(o => o.id === activePlayer.ownerId) : null;
+                  return winningOwner ? <PageLevelBlasts color={winningOwner.color} /> : null;
+                })()}
+                <PlayerCard player={activePlayer} owners={owners} isActive={true} />
               </div>
             ) : resolvedLastSoldPlayer ? (
               (() => {
@@ -751,135 +649,9 @@ export default function App() {
                 const teamColor = winningOwner?.color || '#10b981';
                 
                 return (
-                  /* Spectacular Live Sports broadcaster style "RECENTLY ACQUIRED" spotlight card with beautiful ongoing blasts */
-                  <div 
-                    className="bg-gradient-to-b from-[#111111] to-[#050505] border-2 p-8 rounded-3xl shadow-2xl relative overflow-hidden max-w-4xl mx-auto transition-all duration-500"
-                    style={{ 
-                      borderColor: `${teamColor}44`, 
-                      boxShadow: `0 0 40px ${teamColor}20`
-                    }}
-                  >
+                  <div className="max-w-5xl mx-auto animate-fade-in relative">
                     {winningOwner && <PageLevelBlasts color={teamColor} />}
-                    
-                    <div className="absolute top-0 right-0 w-32 h-32 rounded-full blur-3xl pointer-events-none" style={{ backgroundColor: `${teamColor}10` }} />
-                    <div className="absolute bottom-0 left-0 w-32 h-32 rounded-full blur-3xl pointer-events-none" style={{ backgroundColor: `${teamColor}10` }} />
-                    
-                    <div className="grid grid-cols-1 md:grid-cols-12 gap-8 items-center relative z-10">
-                      {/* Left Column: Player Card */}
-                      <div className="md:col-span-5 flex justify-center pb-6 md:pb-0">
-                        <div className="w-full max-w-sm">
-                          <PlayerCard player={resolvedLastSoldPlayer} owners={owners} isActive={false} />
-                        </div>
-                      </div>
-
-                      {/* Right Column: Winning Owner & Team stats */}
-                      <div className="md:col-span-7">
-                        {(() => {
-                          if (!winningOwner) {
-                            return (
-                              <div className="text-center space-y-4 py-6">
-                                <p className="text-slate-400">This player went unsold in the latest round.</p>
-                                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-[10px] font-extrabold uppercase tracking-widest bg-amber-500/10 text-amber-500 border border-amber-500/20">
-                                  <Sparkles className="w-3.5 h-3.5" /> FALABELLA INTEGRATION ARENA
-                                </div>
-                              </div>
-                            );
-                          }
-
-                          const ownerPlayers = players.filter(p => p.ownerId === winningOwner.id && p.status === 'SOLD');
-                          const squadCount = ownerPlayers.length;
-                          const spent = ownerPlayers.reduce((sum, p) => sum + (p.winningBid || 0), 0);
-                          const chipsLeft = winningOwner.initialWallet - spent;
-                          const maxTeamSize = auctionState.maxTeamSize || 15;
-                          const minGirlsCount = auctionState.minGirlsCount || 4;
-                          const girlsInTeam = ownerPlayers.filter(p => p.gender === 'Female').length;
-
-                          return (
-                            <div className="space-y-6">
-                              <div className="space-y-2">
-                                <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-[10px] font-black uppercase tracking-widest rounded-full">
-                                  🏆 RECENT ACQUISITION COMPLETED
-                                </div>
-                                <h2 className="text-3xl font-black text-white tracking-tight leading-none uppercase" style={{ color: teamColor }}>
-                                  {winningOwner.name}
-                                </h2>
-                                <p className="text-xs text-slate-400">
-                                  Successfully drafted <span className="text-white font-bold">{resolvedLastSoldPlayer.name}</span> for <span className="text-amber-400 font-extrabold">🪙 {(resolvedLastSoldPlayer.winningBid || 0).toLocaleString()}</span> coins!
-                                </p>
-                              </div>
-
-                              {/* Quick Stats Grid */}
-                              <div className="grid grid-cols-2 gap-4">
-                                <div className="bg-white/5 border border-white/5 rounded-2xl p-4 space-y-1">
-                                  <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest">CHIPS LEFT</p>
-                                  <p className="text-2xl font-black text-amber-400 font-mono">
-                                    🪙 {chipsLeft.toLocaleString()}
-                                  </p>
-                                </div>
-                                <div className="bg-white/5 border border-white/5 rounded-2xl p-4 space-y-1">
-                                  <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest">SQUAD MEMBERS</p>
-                                  <p className="text-2xl font-black text-white font-mono">
-                                    {squadCount} <span className="text-xs text-slate-500">/ {maxTeamSize}</span>
-                                  </p>
-                                </div>
-                              </div>
-
-                              {/* Recruitment compliance progress bars */}
-                              <div className="space-y-3 bg-black/40 border border-white/5 rounded-2xl p-4">
-                                <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest">SQUAD COMPLIANCE RULES</h3>
-                                
-                                <div className="space-y-1.5">
-                                  <div className="flex justify-between text-xs font-bold text-slate-400">
-                                    <span>Roster Limit</span>
-                                    <span>{squadCount} / {maxTeamSize} Players</span>
-                                  </div>
-                                  <div className="w-full bg-white/5 h-1.5 rounded-full overflow-hidden">
-                                    <div 
-                                      className="h-full bg-emerald-500 transition-all duration-500" 
-                                      style={{ width: `${Math.min(100, (squadCount / maxTeamSize) * 100)}%` }} 
-                                    />
-                                  </div>
-                                </div>
-
-                                <div className="space-y-1.5">
-                                  <div className="flex justify-between text-xs font-bold text-slate-400">
-                                    <span>Female Competitors</span>
-                                    <span>{girlsInTeam} / {minGirlsCount} Required</span>
-                                  </div>
-                                  <div className="w-full bg-white/5 h-1.5 rounded-full overflow-hidden">
-                                    <div 
-                                      className={`h-full transition-all duration-500 ${girlsInTeam >= minGirlsCount ? 'bg-indigo-500' : 'bg-pink-500'}`} 
-                                      style={{ width: `${Math.min(100, (girlsInTeam / minGirlsCount) * 100)}%` }} 
-                                    />
-                                  </div>
-                                </div>
-                              </div>
-
-                              {/* Mini Current Roster */}
-                              <div className="space-y-2">
-                                <h4 className="text-[10px] font-black text-slate-500 uppercase tracking-widest">CURRENT SQUAD</h4>
-                                <div className="flex flex-wrap gap-1.5 max-h-24 overflow-y-auto pr-1">
-                                  {ownerPlayers.map(p => (
-                                    <div key={p.id} className="flex items-center gap-1.5 px-2.5 py-1 bg-white/5 border border-white/5 rounded-lg text-xs font-semibold text-slate-300">
-                                      <span className="text-sm">{p.photoUrl || '👤'}</span>
-                                      <span>{p.name}</span>
-                                    </div>
-                                  ))}
-                                  {ownerPlayers.length === 0 && (
-                                    <p className="text-xs text-slate-600 italic">This is their first drafted player!</p>
-                                  )}
-                                </div>
-                              </div>
-
-                              <div className="pt-2 border-t border-white/5 flex items-center gap-2 text-slate-600 text-[10px] font-bold uppercase tracking-widest animate-pulse">
-                                <span className="w-1.5 h-1.5 rounded-full bg-slate-600" />
-                                Waiting for the next draft round to begin...
-                              </div>
-                            </div>
-                          );
-                        })()}
-                      </div>
-                    </div>
+                    <PlayerCard player={resolvedLastSoldPlayer} owners={owners} isActive={true} />
                   </div>
                 );
               })()
@@ -1030,6 +802,7 @@ export default function App() {
                           {/* Header */}
                           <div>
                             <h5 className="font-extrabold text-sm text-white tracking-tight line-clamp-1">{owner.name}</h5>
+                            <p className="text-[10px] text-amber-500/90 font-black tracking-wider uppercase mt-0.5">🪙 {budget.toLocaleString()} CHIPS LEFT</p>
                             <div className="grid grid-cols-2 gap-1.5 mt-2.5 text-[10px] font-bold uppercase tracking-wider text-slate-400">
                               <div className="bg-white/5 p-1 rounded text-center">
                                 <span className="block text-slate-500">Budget</span>

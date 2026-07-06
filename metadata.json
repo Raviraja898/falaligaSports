@@ -1,6 +1,6 @@
 {
-  "name": "Office Games Player Auction",
-  "description": "A real-time blind bidding and auction platform for office sports and gaming drafts, featuring live wallet tracking, tie resolution, and admin tools.",
+  "name": "Falabella Auction 4.0",
+  "description": "An offline-bidding and draft management platform for office sports, featuring admin-approved sales, roster visualizers, budget trackers, and real-time dashboard updates.",
   "requestFramePermissions": [],
   "majorCapabilities": [
     "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"

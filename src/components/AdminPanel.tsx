@@ -177,6 +177,10 @@ export default function AdminPanel({ players, owners, bids, auctionState, onLogo
   const [resetting, setResetting] = useState(false);
   const [activeTab, setActiveTab] = useState<'auction' | 'players' | 'rosters' | 'manage'>('auction');
 
+  // Offline direct manual bidding states
+  const [manualBidAmount, setManualBidAmount] = useState<number>(0);
+  const [selectedWinnerId, setSelectedWinnerId] = useState<string>('');
+
   // Password management states
   const [passwordsState, setPasswordsState] = useState<Record<string, string>>({});
   const [passwordVisibility, setPasswordVisibility] = useState<Record<string, boolean>>({});
@@ -256,10 +260,10 @@ export default function AdminPanel({ players, owners, bids, auctionState, onLogo
   // Download Sample CSV Helper
   const downloadSampleCSV = () => {
     const csvContent = "data:text/csv;charset=utf-8,"
-      + "Name,Role,Gender,BasePrice,SkillRating,PhotoUrl,FalaLeague,Badminton,Carroms,Cricket,Football,TT\n"
-      + "Rachel Green,Frontend Specialist,Female,5000,88,👩,First Place,90,75,60,50,85\n"
-      + "Tony Stark,Tech Architect,Male,7500,98,🧙,,70,80,95,65,90\n"
-      + "John Doe,Product Manager,Male,,80,📊,,85,85,85,85,85";
+      + "Name,Role,Gender,SkillRating,PhotoUrl,FalaLeague,Badminton,Carroms,Cricket,Football,TT\n"
+      + "Rachel Green,Frontend Specialist,Female,88,👩,First Place,90,75,60,50,85\n"
+      + "Tony Stark,Tech Architect,Male,98,🧙,,70,80,95,65,90\n"
+      + "John Doe,Product Manager,Male,80,📊,,85,85,85,85,85";
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement("a");
     link.setAttribute("href", encodedUri);
@@ -275,13 +279,12 @@ export default function AdminPanel({ players, owners, bids, auctionState, onLogo
       alert(`The roster for "${owner.name}" is currently empty.`);
       return;
     }
-    const headers = ['Player Name', 'Gender', 'Role', 'Skill Rating', 'Base Price (Coins)', 'Winning Bid (Coins)', 'Fala League Status'];
+    const headers = ['Player Name', 'Gender', 'Role', 'Skill Rating', 'Winning Bid (Coins)', 'Fala League Status'];
     const rows = teamRoster.map(p => [
       p.name,
       p.gender,
       p.role,
       p.skillRating,
-      p.basePrice,
       p.winningBid || 0,
       p.falaLeague || 'None'
     ]);
@@ -357,12 +360,12 @@ export default function AdminPanel({ players, owners, bids, auctionState, onLogo
   // Handle Add Player
   const handleAddPlayerSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!playerName.trim() || !playerRole.trim()) return;
+    if (!playerName.trim()) return;
 
     const newPlayer: Player = {
       id: `player_${Date.now()}`,
       name: playerName.trim(),
-      role: playerRole.trim(),
+      role: 'Competitor',
       basePrice: Number(playerBasePrice),
       skillRating: Number(playerSkillRating),
       status: 'AVAILABLE',
@@ -685,6 +688,13 @@ export default function AdminPanel({ players, owners, bids, auctionState, onLogo
   // Find active player
   const activePlayer = players.find(p => p.id === auctionState.activePlayerId);
 
+  useEffect(() => {
+    if (activePlayer) {
+      setManualBidAmount(activePlayer.basePrice || 0);
+      setSelectedWinnerId('');
+    }
+  }, [activePlayer?.id]);
+
   // Active player bids
   const activeBids = bids.filter(b => b.playerId === auctionState.activePlayerId);
 
@@ -938,212 +948,71 @@ export default function AdminPanel({ players, owners, bids, auctionState, onLogo
           {/* Real-time Bid Monitor & Controls */}
           <div className="lg:col-span-7 space-y-6">
             {activePlayer && (
-              <div className="bg-[#121212] border border-white/10 rounded-2xl p-6 shadow-lg">
-                <div className="flex justify-between items-start gap-4 mb-6">
-                  <div>
-                    <h3 className="text-base font-bold text-slate-100 flex items-center gap-1.5">
-                      Bidding Room
-                    </h3>
-                    <p className="text-xs text-slate-400">
-                      Real-time tracker of blind bids from team owners
-                    </p>
+              <div className="bg-[#121212] border border-white/10 rounded-2xl p-6 shadow-lg space-y-6">
+                <div>
+                  <h3 className="text-base font-bold text-slate-100 flex items-center gap-1.5 font-display">
+                    🔨 Offline Bidding Controller
+                  </h3>
+                  <p className="text-xs text-slate-400 mt-1">
+                    Directly enter offline bid amount and select the team owner to award this player.
+                  </p>
+                </div>
+
+                <div className="space-y-4 bg-black/40 p-4 rounded-xl border border-white/5">
+                  {/* Select Winner */}
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
+                      Select Winning Team Owner
+                    </label>
+                    <select
+                      value={selectedWinnerId}
+                      onChange={(e) => setSelectedWinnerId(e.target.value)}
+                      className="w-full px-4 py-2.5 bg-black/60 border border-white/10 focus:border-fala-blue rounded-xl text-sm text-slate-200 font-bold focus:outline-none cursor-pointer"
+                    >
+                      <option value="">-- Choose Team --</option>
+                      {owners.map(owner => (
+                        <option key={owner.id} value={owner.id}>
+                          {owner.name} (Budget: 🪙 {owner.wallet.toLocaleString()})
+                        </option>
+                      ))}
+                    </select>
                   </div>
-                  <div className="flex items-center gap-1.5 bg-black/40 px-2.5 py-1 rounded-lg border border-white/10 text-xs font-semibold">
-                    <span className="w-2 h-2 rounded-full bg-fala-magenta animate-pulse" />
-                    <span className="text-fala-magenta">{activeBids.length} Bids</span>
+
+                  {/* Manual Bid Value Input */}
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
+                      Winning Bid Amount (Coins)
+                    </label>
+                    <input
+                      type="number"
+                      value={manualBidAmount}
+                      onChange={(e) => setManualBidAmount(Math.max(0, Number(e.target.value)))}
+                      className="w-full px-4 py-2.5 bg-black/60 border border-white/10 focus:border-fala-blue rounded-xl text-sm font-mono text-slate-100 focus:outline-none"
+                    />
                   </div>
                 </div>
 
-                {/* Submissions List */}
-                <div className="space-y-3 mb-6">
-                  {owners.map(owner => {
-                    const hasBid = didBid(owner.id);
-                    const bid = activeBids.find(b => b.ownerId === owner.id);
-                    const isTiedAndSelected = auctionState.status === 'TIE_RESOLUTION' && auctionState.tiedOwners?.includes(owner.id);
-
-                    return (
-                      <div 
-                        key={owner.id}
-                        className={`flex items-center justify-between p-3.5 rounded-xl border transition-all ${
-                          isTiedAndSelected 
-                            ? 'bg-fala-magenta/10 border-fala-magenta/30' 
-                            : 'bg-black/40 border-white/10'
-                        }`}
-                      >
-                        <div className="flex items-center gap-2.5">
-                          <div className="w-3 h-3 rounded-full" style={{ backgroundColor: owner.color }} />
-                          <div>
-                            <span className="text-xs font-bold text-slate-200">{owner.name}</span>
-                            <span className="text-[10px] text-slate-500 block">Wallet: 🪙 {owner.wallet}</span>
-                          </div>
-                        </div>
-
-                        <div>
-                          {auctionState.status === 'BIDDING' && (
-                            <span className={`inline-flex items-center gap-1 text-xs font-bold ${
-                              hasBid ? 'text-fala-blue' : 'text-slate-500'
-                            }`}>
-                              {hasBid ? '✅ Bid Placed' : '⏳ Waiting...'}
-                            </span>
-                          )}
-
-                          {auctionState.status === 'TIE_RESOLUTION' && (
-                            <span className={`inline-flex items-center gap-1 text-xs font-bold ${
-                              isTiedAndSelected
-                                ? hasBid ? 'text-fala-blue' : 'text-fala-blue/60 animate-pulse'
-                                : 'text-slate-500 line-through'
-                            }`}>
-                              {isTiedAndSelected 
-                                ? hasBid ? '⚡ Re-bid Submitted' : '⏳ Tied Re-bidding...' 
-                                : 'Excluded from tie-breaker'}
-                            </span>
-                          )}
-
-                          {(auctionState.status === 'REVEALED' || (auctionState.status === 'TIE_RESOLUTION' && hasBid)) && bid && (
-                            <div className="flex items-center gap-2">
-                              <span className="font-mono text-xs text-fala-green font-bold bg-fala-green/10 px-2.5 py-1 rounded border border-fala-green/20">
-                                🪙 {bid.amount}
-                              </span>
-                              {highestBidAmount > 0 && bid.amount === highestBidAmount && (
-                                <span className="p-1 rounded bg-fala-blue text-white text-[10px] font-black uppercase">
-                                  Highest
-                                </span>
-                              )}
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-
-                {/* Operations Panel */}
-                <div className="border-t border-white/10 pt-5 space-y-4">
-                  {auctionState.status === 'BIDDING' && (
-                    <div className="flex gap-3">
-                      <button
-                        onClick={handleReveal}
-                        disabled={activeBids.length === 0}
-                        className="flex-1 py-3 bg-fala-blue hover:bg-fala-blue/90 disabled:opacity-40 text-white rounded-xl text-xs font-bold transition-all shadow-md flex items-center justify-center gap-1.5 cursor-pointer font-black uppercase"
-                      >
-                        <Eye className="w-4 h-4 text-white" />
-                        Reveal Blind Bids ({activeBids.length})
-                      </button>
-                      <button
-                        onClick={handleUnsold}
-                        className="py-3 px-4 bg-white/5 hover:bg-rose-950/40 hover:border-rose-900 border border-white/10 text-rose-400 rounded-xl text-xs font-bold transition-all cursor-pointer"
-                      >
-                        Unsold Pool
-                      </button>
-                    </div>
-                  )}
-
-                  {auctionState.status === 'REVEALED' && (
-                    <div className="space-y-4">
-                      {activeBids.length === 0 ? (
-                        <div className="p-4 bg-rose-500/10 border border-rose-500/20 rounded-xl text-center">
-                          <AlertTriangle className="w-5 h-5 text-rose-400 mx-auto mb-1.5" />
-                          <h4 className="text-xs font-bold text-rose-300">No Bids Placed!</h4>
-                          <p className="text-[11px] text-rose-400/80 mt-0.5">Move this player to the Unsold Pool to auction them later.</p>
-                          <button
-                            onClick={handleUnsold}
-                            className="mt-3 px-4 py-1.5 bg-rose-600 hover:bg-rose-500 text-white rounded-lg text-xs font-bold transition-all cursor-pointer"
-                          >
-                            Mark as Unsold
-                          </button>
-                        </div>
-                      ) : isTie ? (
-                        <div className="p-4 bg-fala-magenta/10 border border-fala-magenta/20 rounded-xl space-y-3">
-                          <div className="flex items-start gap-2.5">
-                            <AlertTriangle className="w-5 h-5 text-fala-magenta flex-shrink-0 mt-0.5" />
-                            <div>
-                              <h4 className="text-xs font-bold text-fala-magenta">Bid Tie Detected!</h4>
-                              <p className="text-[11px] text-fala-magenta/80 mt-0.5">
-                                {highestBidders.map(b => b.ownerName).join(' & ')} tied at <strong className="font-mono">🪙 {highestBidAmount.toLocaleString()} coins</strong>!
-                              </p>
-                              <p className="text-[11px] text-fala-magenta/95 mt-1">
-                                Per league rules, manual decisions or spins are disabled. This player will be held and automatically rescheduled in the middle or at the end of the pool.
-                              </p>
-                            </div>
-                          </div>
-
-                          <div className="pt-2">
-                            <button
-                              onClick={async () => {
-                               if (!activePlayer) return;
-                                try {
-                                  await rescheduleTiedPlayer(activePlayer.id);
-                                } catch (err) {
-                                  console.error("Failed to reschedule tied player:", err);
-                                }
-                              }}
-                              className="w-full py-2.5 bg-fala-blue hover:bg-fala-blue/90 text-white font-black uppercase tracking-wider rounded-xl transition-all shadow-md flex items-center justify-center gap-1.5 cursor-pointer text-xs"
-                            >
-                              <RotateCcw className="w-4 h-4" /> Hold Player & Reschedule Randomly
-                            </button>
-                          </div>
-                        </div>
-                      ) : (
-                        <div className="p-4 bg-emerald-500/10 border border-emerald-500/20 rounded-xl flex items-center justify-between gap-4">
-                          <div className="flex items-center gap-3">
-                            <div className="p-2 bg-emerald-500/20 text-emerald-400 rounded-lg">
-                              <CheckCircle className="w-5 h-5" />
-                            </div>
-                            <div>
-                              <h4 className="text-xs font-bold text-emerald-300">Clear Bid Winner!</h4>
-                              <p className="text-xs text-slate-200 mt-0.5">
-                                <strong style={{ color: owners.find(o => o.id === highestBidders[0].ownerId)?.color }}>
-                                  {highestBidders[0].ownerName}
-                                </strong> wins with a bid of <strong className="font-mono text-fala-green">🪙 {highestBidAmount}</strong>
-                              </p>
-                            </div>
-                          </div>
-                          <button
-                            onClick={() => handleAwardPlayer(highestBidders[0].ownerId, highestBidAmount)}
-                            className="px-4 py-2 bg-fala-blue hover:bg-fala-blue/90 text-white rounded-lg text-xs font-bold transition-all shadow-md whitespace-nowrap cursor-pointer"
-                          >
-                            Award & Deduct Wallet
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                  )}
-
-                  {auctionState.status === 'TIE_RESOLUTION' && (
-                    <div className="space-y-4">
-                      <div className="p-4 bg-fala-magenta/10 border border-fala-magenta/20 rounded-xl space-y-3">
-                        <div className="flex items-start gap-2.5">
-                          <AlertTriangle className="w-5 h-5 text-fala-magenta flex-shrink-0 mt-0.5" />
-                          <div>
-                            <h4 className="text-xs font-bold text-fala-magenta">Sudden Death Re-bid in Progress!</h4>
-                            <p className="text-[11px] text-fala-magenta/80 mt-0.5">
-                              Tied owners are submitting re-bids. Minimum bid amount is <strong>🪙 {auctionState.originalWinningAmount}</strong>.
-                            </p>
-                          </div>
-                        </div>
-
-                        <div className="flex gap-2">
-                          <button
-                            onClick={handleReveal}
-                            disabled={activeBids.length < (auctionState.tiedOwners?.length || 0)}
-                            className="flex-1 py-2 bg-fala-blue hover:bg-fala-blue/90 disabled:opacity-40 text-white font-extrabold rounded-lg text-xs transition-all flex items-center justify-center gap-1.5 cursor-pointer"
-                          >
-                            <Eye className="w-4 h-4 text-white" />
-                            Reveal and Resolve Re-bids ({activeBids.length})
-                          </button>
-                          <button
-                            onClick={() => {
-                              // Reset state back to revealed to try another strategy
-                              revealBids();
-                            }}
-                            className="px-3 py-2 bg-white/5 hover:bg-white/10 text-slate-300 border border-white/10 rounded-lg text-xs font-bold transition-all cursor-pointer"
-                          >
-                            Cancel Tie-Breaker
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  )}
+                {/* Operations Actions */}
+                <div className="pt-2 flex flex-col sm:flex-row gap-3">
+                  <button
+                    onClick={() => handleAwardPlayer(selectedWinnerId, manualBidAmount)}
+                    disabled={!selectedWinnerId || manualBidAmount <= 0}
+                    className="flex-1 py-3 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40 text-white rounded-xl text-xs font-black uppercase tracking-wider transition-all shadow-md flex items-center justify-center gap-1.5 cursor-pointer"
+                  >
+                    🏆 Approve & Award Player
+                  </button>
+                  <button
+                    onClick={handleUnsold}
+                    className="py-3 px-5 bg-rose-950/40 hover:bg-rose-900 border border-rose-900/30 text-rose-400 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap"
+                  >
+                    Mark as Unsold
+                  </button>
+                  <button
+                    onClick={() => handleRestartPlayerBidClick(activePlayer.id, activePlayer.name)}
+                    className="py-3 px-4 bg-white/5 hover:bg-white/10 border border-white/10 text-slate-400 hover:text-slate-200 rounded-xl text-xs font-semibold transition-all cursor-pointer whitespace-nowrap"
+                  >
+                    Cancel Draft
+                  </button>
                 </div>
               </div>
             )}
@@ -1291,43 +1160,20 @@ export default function AdminPanel({ players, owners, bids, auctionState, onLogo
                       />
                     </div>
 
-                    <div className="space-y-1.5">
-                      <label className="font-bold text-slate-300">Designation / Role</label>
-                      <input
-                        type="text"
-                        required
-                        value={editRole}
-                        onChange={(e) => setEditRole(e.target.value)}
-                        className="w-full px-3 py-2 bg-black/40 border border-white/10 focus:border-blue-500 rounded-xl text-xs focus:outline-none transition-all text-slate-100"
-                      />
-                    </div>
+
                   </div>
 
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-1.5">
-                      <label className="font-bold text-slate-300">Base Price (Coins)</label>
-                      <input
-                        type="number"
-                        required
-                        min="0"
-                        value={editBasePrice}
-                        onChange={(e) => setEditBasePrice(Number(e.target.value))}
-                        className="w-full px-3 py-2 bg-black/40 border border-white/10 focus:border-blue-500 rounded-xl text-xs focus:outline-none transition-all text-slate-100 font-mono"
-                      />
-                    </div>
-
-                    <div className="space-y-1.5">
-                      <label className="font-bold text-slate-300">Skill Rating (1-100)</label>
-                      <input
-                        type="number"
-                        required
-                        min="1"
-                        max="100"
-                        value={editSkillRating}
-                        onChange={(e) => setEditSkillRating(Number(e.target.value))}
-                        className="w-full px-3 py-2 bg-black/40 border border-white/10 focus:border-blue-500 rounded-xl text-xs focus:outline-none transition-all text-slate-100 font-mono"
-                      />
-                    </div>
+                  <div className="space-y-1.5">
+                    <label className="font-bold text-slate-300">Skill Rating (1-100)</label>
+                    <input
+                      type="number"
+                      required
+                      min="1"
+                      max="100"
+                      value={editSkillRating}
+                      onChange={(e) => setEditSkillRating(Number(e.target.value))}
+                      className="w-full px-3 py-2 bg-black/40 border border-white/10 focus:border-blue-500 rounded-xl text-xs focus:outline-none transition-all text-slate-100 font-mono"
+                    />
                   </div>
 
                   <div className="grid grid-cols-3 gap-3">
@@ -1611,7 +1457,7 @@ export default function AdminPanel({ players, owners, bids, auctionState, onLogo
               </div>
             )}
 
-            <form onSubmit={handleUpdateSettings} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 items-end">
+            <form onSubmit={handleUpdateSettings} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 items-end">
               <div className="space-y-1.5">
                 <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Max Team Size Limit</label>
                 <input
@@ -1638,19 +1484,6 @@ export default function AdminPanel({ players, owners, bids, auctionState, onLogo
                   required
                 />
                 <p className="text-[10px] text-slate-500 mt-1">Rule: Every team must have at least N girls</p>
-              </div>
-
-              <div className="space-y-1.5">
-                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Default Min Bid (Coins)</label>
-                <input
-                  type="number"
-                  min="0"
-                  value={configDefaultMinBid}
-                  onChange={(e) => setConfigDefaultMinBid(Number(e.target.value))}
-                  className="w-full px-4 py-2.5 bg-black/40 border border-white/10 focus:border-fala-blue rounded-xl text-sm text-slate-100 font-mono focus:outline-none transition-colors"
-                  required
-                />
-                <p className="text-[10px] text-slate-500 mt-1">Default starting price for bids (e.g. 5000)</p>
               </div>
 
               <button
@@ -1749,44 +1582,20 @@ export default function AdminPanel({ players, owners, bids, auctionState, onLogo
                   />
                 </div>
 
-                <div className="space-y-1.5">
-                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Corporate Role</label>
-                  <input
-                    type="text"
-                    value={playerRole}
-                    onChange={(e) => setPlayerRole(e.target.value)}
-                    placeholder="e.g. Pitch & Slide Specialist"
-                    className="w-full px-4 py-2.5 bg-black/40 border border-white/10 focus:border-fala-blue rounded-xl text-sm text-slate-100 focus:outline-none placeholder:text-slate-600 transition-colors"
-                    required
-                  />
-                </div>
+
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-1.5">
-                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Base Price (Coins)</label>
-                  <input
-                    type="number"
-                    value={playerBasePrice}
-                    onChange={(e) => setPlayerBasePrice(Number(e.target.value))}
-                    min={1}
-                    className="w-full px-4 py-2.5 bg-black/40 border border-white/10 focus:border-fala-blue rounded-xl text-sm text-slate-100 font-mono focus:outline-none transition-colors"
-                    required
-                  />
-                </div>
-
-                <div className="space-y-1.5">
-                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Skill Rating (1-100)</label>
-                  <input
-                    type="number"
-                    value={playerSkillRating}
-                    onChange={(e) => setPlayerSkillRating(Number(e.target.value))}
-                    min={1}
-                    max={100}
-                    className="w-full px-4 py-2.5 bg-black/40 border border-white/10 focus:border-fala-blue rounded-xl text-sm text-slate-100 font-mono focus:outline-none transition-colors"
-                    required
-                  />
-                </div>
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Skill Rating (1-100)</label>
+                <input
+                  type="number"
+                  value={playerSkillRating}
+                  onChange={(e) => setPlayerSkillRating(Number(e.target.value))}
+                  min={1}
+                  max={100}
+                  className="w-full px-4 py-2.5 bg-black/40 border border-white/10 focus:border-fala-blue rounded-xl text-sm text-slate-100 font-mono focus:outline-none transition-colors"
+                  required
+                />
               </div>
 
               {/* Gender Selector */}
@@ -2043,71 +1852,7 @@ export default function AdminPanel({ players, owners, bids, auctionState, onLogo
 
         </div>
 
-        {/* Team Owner Passwords Section */}
-        <div className="bg-[#121212] border border-white/10 p-6 rounded-3xl shadow-xl space-y-6">
-          <div className="flex items-center gap-2.5 pb-4 border-b border-white/5">
-            <div className="w-9 h-9 rounded-xl bg-fala-blue/10 text-fala-blue border border-fala-blue/20 flex items-center justify-center">
-              <Key className="w-5 h-5 text-fala-blue" />
-            </div>
-            <div>
-              <h2 className="text-base font-bold text-slate-100">Team Owner Passwords & Accounts</h2>
-              <p className="text-xs text-slate-400">Set custom access passwords for team owners to log in securely to their dashboards</p>
-            </div>
-          </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {owners.map(owner => {
-              const hasPassword = !!owner.password;
-              const isVisible = !!passwordVisibility[owner.id];
-              
-              return (
-                <div key={owner.id} className="bg-black/30 p-4 rounded-2xl border border-white/5 flex flex-col md:flex-row md:items-center justify-between gap-4">
-                  <div className="flex items-center gap-3">
-                    <div className="w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: owner.color }} />
-                    <div>
-                      <span className="text-sm font-bold text-slate-200 block">{owner.name}</span>
-                      <span className="text-[10px] text-slate-500 block">
-                        Status: {hasPassword ? (
-                          <span className="text-emerald-400 font-bold">● Password Active</span>
-                        ) : (
-                          <span className="text-fala-magenta font-bold">● Default Active ('1234')</span>
-                        )}
-                      </span>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-2 flex-1 md:max-w-[280px]">
-                    <div className="relative flex-1">
-                      <input
-                        type={isVisible ? "text" : "password"}
-                        value={passwordsState[owner.id] !== undefined ? passwordsState[owner.id] : (owner.password || '')}
-                        onChange={(e) => setPasswordsState({ ...passwordsState, [owner.id]: e.target.value })}
-                        placeholder="Set custom password"
-                        className="w-full px-3 py-2 bg-[#0a0a0a] border border-white/10 focus:border-fala-blue rounded-xl text-xs text-slate-100 focus:outline-none transition-all pr-8"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setPasswordVisibility({ ...passwordVisibility, [owner.id]: !isVisible })}
-                        className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 cursor-pointer"
-                      >
-                        {isVisible ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
-                      </button>
-                    </div>
-
-                    <button
-                      type="button"
-                      onClick={() => handleUpdateOwnerPasswordClick(owner.id, owner.name)}
-                      className="px-3 py-2 bg-fala-blue hover:bg-fala-blue/90 text-white rounded-xl text-xs font-bold transition-all cursor-pointer shadow flex items-center gap-1.5"
-                    >
-                      <CheckSquare className="w-3.5 h-3.5" />
-                      Save
-                    </button>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
 
         {/* CSV Players Bulk Upload Section */}
         <div className="bg-[#121212] border border-white/10 p-6 rounded-3xl shadow-xl space-y-6">
