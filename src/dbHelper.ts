@@ -27,7 +27,9 @@ export async function seedDatabase() {
     originalWinningAmount: 0,
     maxTeamSize: 15,
     minGirlsCount: 4,
-    autoRandomMode: false
+    defaultMinBid: 5000,
+    autoRandomMode: false,
+    lastSoldPlayerId: null
   });
 
   // 2. Clear old owners & write initial owners
@@ -37,7 +39,8 @@ export async function seedDatabase() {
   });
   INITIAL_OWNERS.forEach((owner) => {
     const ownerRef = doc(db, 'owners', owner.id);
-    batch.set(ownerRef, owner);
+    const sanitizedOwner = JSON.parse(JSON.stringify(owner));
+    batch.set(ownerRef, sanitizedOwner);
   });
 
   // 3. Clear old players & write initial players
@@ -47,7 +50,8 @@ export async function seedDatabase() {
   });
   INITIAL_PLAYERS.forEach((player) => {
     const playerRef = doc(db, 'players', player.id);
-    batch.set(playerRef, player);
+    const sanitizedPlayer = JSON.parse(JSON.stringify(player));
+    batch.set(playerRef, sanitizedPlayer);
   });
 
   // 4. Clear old bids
@@ -135,7 +139,8 @@ export async function resolveAuction(
     activePlayerId: null,
     status: 'IDLE',
     tiedOwners: [],
-    originalWinningAmount: 0
+    originalWinningAmount: 0,
+    lastSoldPlayerId: playerId
   });
 
   await batch.commit();
@@ -175,24 +180,27 @@ export async function startTieResolution(playerId: string, tiedOwnerIds: string[
 }
 
 // Update auction configurations
-export async function updateAuctionSettings(maxTeamSize: number, minGirlsCount: number) {
+export async function updateAuctionSettings(maxTeamSize: number, minGirlsCount: number, defaultMinBid: number) {
   const statusRef = doc(db, 'auction', 'status');
   await updateDoc(statusRef, {
     maxTeamSize,
-    minGirlsCount
+    minGirlsCount,
+    defaultMinBid
   });
 }
 
 // Add a new player
 export async function addPlayer(player: Player) {
+  const sanitized = JSON.parse(JSON.stringify(player));
   const playerRef = doc(db, 'players', player.id);
-  await setDoc(playerRef, player);
+  await setDoc(playerRef, sanitized);
 }
 
 // Add a new team owner
 export async function addOwner(owner: Owner) {
+  const sanitized = JSON.parse(JSON.stringify(owner));
   const ownerRef = doc(db, 'owners', owner.id);
-  await setDoc(ownerRef, owner);
+  await setDoc(ownerRef, sanitized);
 }
 
 // Helper to delete a specific bid (e.g. if an owner wants to withdraw, though they usually can just edit it)
@@ -203,7 +211,6 @@ export async function deleteBid(playerId: string, ownerId: string) {
 
 // Delete a player and handle budget refunds if sold
 export async function deletePlayer(playerId: string) {
-  const batch = writeBatch(db);
   const playerRef = doc(db, 'players', playerId);
   const playerSnap = await getDoc(playerRef);
   
@@ -214,19 +221,19 @@ export async function deletePlayer(playerId: string) {
       const ownerSnap = await getDoc(ownerRef);
       if (ownerSnap.exists()) {
         const ownerData = ownerSnap.data() as Owner;
-        batch.update(ownerRef, {
+        await updateDoc(ownerRef, {
           wallet: (ownerData.wallet || 0) + playerData.winningBid
         });
       }
     }
-    batch.delete(playerRef);
+    await deleteDoc(playerRef);
   }
   
   // Clear bids for this player
   const bidsSnap = await getDocs(query(collection(db, 'bids'), where('playerId', '==', playerId)));
-  bidsSnap.forEach((d) => {
-    batch.delete(doc(db, 'bids', d.id));
-  });
+  for (const d of bidsSnap.docs) {
+    await deleteDoc(doc(db, 'bids', d.id));
+  }
   
   // Reset active player if it was this player
   const statusRef = doc(db, 'auction', 'status');
@@ -234,7 +241,7 @@ export async function deletePlayer(playerId: string) {
   if (statusSnap.exists()) {
     const statusData = statusSnap.data() as AuctionState;
     if (statusData.activePlayerId === playerId) {
-      batch.update(statusRef, {
+      await updateDoc(statusRef, {
         activePlayerId: null,
         status: 'IDLE',
         tiedOwners: [],
@@ -242,33 +249,124 @@ export async function deletePlayer(playerId: string) {
       });
     }
   }
-  
-  await batch.commit();
+}
+
+// Delete all players from the tournament and reset owners' wallets
+export async function deleteAllPlayers() {
+  // 1. Delete all players
+  const playersSnap = await getDocs(collection(db, 'players'));
+  for (const d of playersSnap.docs) {
+    await deleteDoc(doc(db, 'players', d.id));
+  }
+
+  // 2. Delete all bids
+  const bidsSnap = await getDocs(collection(db, 'bids'));
+  for (const d of bidsSnap.docs) {
+    await deleteDoc(doc(db, 'bids', d.id));
+  }
+
+  // 3. Reset owners' wallets to initialWallet
+  const ownersSnap = await getDocs(collection(db, 'owners'));
+  for (const d of ownersSnap.docs) {
+    const ownerData = d.data() as Owner;
+    await updateDoc(doc(db, 'owners', d.id), {
+      wallet: ownerData.initialWallet || 1000
+    });
+  }
+
+  // 4. Reset active auction status
+  const statusRef = doc(db, 'auction', 'status');
+  await updateDoc(statusRef, {
+    activePlayerId: null,
+    status: 'IDLE',
+    tiedOwners: [],
+    originalWinningAmount: 0
+  });
+}
+
+// Update / Edit an existing player details
+export async function updatePlayer(player: Player) {
+  const sanitized = JSON.parse(JSON.stringify(player));
+  const playerRef = doc(db, 'players', player.id);
+  await setDoc(playerRef, sanitized, { merge: true });
 }
 
 // Delete an owner and reset their won players
 export async function deleteOwner(ownerId: string) {
-  const batch = writeBatch(db);
   const ownerRef = doc(db, 'owners', ownerId);
-  batch.delete(ownerRef);
+  await deleteDoc(ownerRef);
   
   // Reset players won by this owner
   const playersSnap = await getDocs(query(collection(db, 'players'), where('ownerId', '==', ownerId)));
-  playersSnap.forEach((d) => {
-    batch.update(doc(db, 'players', d.id), {
+  for (const d of playersSnap.docs) {
+    await updateDoc(doc(db, 'players', d.id), {
       status: 'AVAILABLE',
       ownerId: null,
       winningBid: null
     });
-  });
+  }
   
   // Clear bids placed by this owner
   const bidsSnap = await getDocs(query(collection(db, 'bids'), where('ownerId', '==', ownerId)));
-  bidsSnap.forEach((d) => {
-    batch.delete(doc(db, 'bids', d.id));
+  for (const d of bidsSnap.docs) {
+    await deleteDoc(doc(db, 'bids', d.id));
+  }
+
+  // Clean up active auction tiedOwners references
+  const statusRef = doc(db, 'auction', 'status');
+  const statusSnap = await getDoc(statusRef);
+  if (statusSnap.exists()) {
+    const statusData = statusSnap.data() as AuctionState;
+    if (statusData.tiedOwners?.includes(ownerId)) {
+      const updatedTies = (statusData.tiedOwners || []).filter(id => id !== ownerId);
+      if (updatedTies.length < 2) {
+        await updateDoc(statusRef, {
+          activePlayerId: null,
+          status: 'IDLE',
+          tiedOwners: [],
+          originalWinningAmount: 0
+        });
+      } else {
+        await updateDoc(statusRef, {
+          tiedOwners: updatedTies
+        });
+      }
+    }
+  }
+}
+
+// Delete all owners/teams from the tournament database
+export async function deleteAllOwners() {
+  // 1. Delete all owners
+  const ownersSnap = await getDocs(collection(db, 'owners'));
+  for (const d of ownersSnap.docs) {
+    await deleteDoc(doc(db, 'owners', d.id));
+  }
+
+  // 2. Reset all players to AVAILABLE, ownerId = null, winningBid = null
+  const playersSnap = await getDocs(collection(db, 'players'));
+  for (const d of playersSnap.docs) {
+    await updateDoc(doc(db, 'players', d.id), {
+      status: 'AVAILABLE',
+      ownerId: null,
+      winningBid: null
+    });
+  }
+
+  // 3. Delete all bids
+  const bidsSnap = await getDocs(collection(db, 'bids'));
+  for (const d of bidsSnap.docs) {
+    await deleteDoc(doc(db, 'bids', d.id));
+  }
+
+  // 4. Reset active auction status
+  const statusRef = doc(db, 'auction', 'status');
+  await updateDoc(statusRef, {
+    activePlayerId: null,
+    status: 'IDLE',
+    tiedOwners: [],
+    originalWinningAmount: 0
   });
-  
-  await batch.commit();
 }
 
 // Restart player's bid to AVAILABLE and refund wallet if sold
@@ -340,13 +438,14 @@ export async function rescheduleTiedPlayer(playerId: string) {
     const newId = `player_${Date.now()}`;
     const newPlayerRef = doc(db, 'players', newId);
     
-    batch.set(newPlayerRef, {
+    const sanitizedData = JSON.parse(JSON.stringify({
       ...playerData,
       id: newId,
       status: 'AVAILABLE',
       ownerId: null,
       winningBid: null
-    });
+    }));
+    batch.set(newPlayerRef, sanitizedData);
     
     // Delete the old player
     batch.delete(playerRef);
@@ -374,4 +473,103 @@ export async function rescheduleTiedPlayer(playerId: string) {
 export async function setAutoRandomMode(enabled: boolean) {
   const statusRef = doc(db, 'auction', 'status');
   await updateDoc(statusRef, { autoRandomMode: enabled });
+}
+
+// Export complete backup of the auction database
+export async function exportAuctionBackup() {
+  const playersSnap = await getDocs(collection(db, 'players'));
+  const ownersSnap = await getDocs(collection(db, 'owners'));
+  const bidsSnap = await getDocs(collection(db, 'bids'));
+  const statusSnap = await getDoc(doc(db, 'auction', 'status'));
+
+  const players: any[] = [];
+  playersSnap.forEach((d) => players.push(d.data()));
+
+  const owners: any[] = [];
+  ownersSnap.forEach((d) => owners.push(d.data()));
+
+  const bids: any[] = [];
+  bidsSnap.forEach((d) => bids.push(d.data()));
+
+  const auctionStatus = statusSnap.exists() ? statusSnap.data() : null;
+
+  return {
+    players,
+    owners,
+    bids,
+    auctionStatus,
+    timestamp: Date.now(),
+    version: '1.0'
+  };
+}
+
+// Import complete backup and restore database
+export async function importAuctionBackup(backupData: any) {
+  if (!backupData || !Array.isArray(backupData.players) || !Array.isArray(backupData.owners)) {
+    throw new Error('Invalid backup file structure.');
+  }
+
+  // Clear existing collections in chunks
+  const playersSnap = await getDocs(collection(db, 'players'));
+  const ownersSnap = await getDocs(collection(db, 'owners'));
+  const bidsSnap = await getDocs(collection(db, 'bids'));
+
+  // Commit deletion of everything in chunk batches
+  const deleteWrites: any[] = [];
+  playersSnap.forEach((d) => deleteWrites.push(doc(db, 'players', d.id)));
+  ownersSnap.forEach((d) => deleteWrites.push(doc(db, 'owners', d.id)));
+  bidsSnap.forEach((d) => deleteWrites.push(doc(db, 'bids', d.id)));
+
+  const deleteChunkSize = 400;
+  for (let i = 0; i < deleteWrites.length; i += deleteChunkSize) {
+    const chunk = deleteWrites.slice(i, i + deleteChunkSize);
+    const deleteBatch = writeBatch(db);
+    chunk.forEach((ref) => deleteBatch.delete(ref));
+    await deleteBatch.commit();
+  }
+
+  // Gather new data to write
+  const allWrites: { ref: any, data: any }[] = [];
+
+  // Auction status
+  if (backupData.auctionStatus) {
+    allWrites.push({
+      ref: doc(db, 'auction', 'status'),
+      data: backupData.auctionStatus
+    });
+  }
+
+  backupData.players.forEach((p: any) => {
+    allWrites.push({
+      ref: doc(db, 'players', p.id),
+      data: p
+    });
+  });
+
+  backupData.owners.forEach((o: any) => {
+    allWrites.push({
+      ref: doc(db, 'owners', o.id),
+      data: o
+    });
+  });
+
+  if (Array.isArray(backupData.bids)) {
+    backupData.bids.forEach((b: any) => {
+      allWrites.push({
+        ref: doc(db, 'bids', b.id),
+        data: b
+      });
+    });
+  }
+
+  // Execute writes in batches of 400
+  const writeChunkSize = 400;
+  for (let i = 0; i < allWrites.length; i += writeChunkSize) {
+    const chunk = allWrites.slice(i, i + writeChunkSize);
+    const writeBatchInstance = writeBatch(db);
+    chunk.forEach((item) => {
+      writeBatchInstance.set(item.ref, item.data);
+    });
+    await writeBatchInstance.commit();
+  }
 }

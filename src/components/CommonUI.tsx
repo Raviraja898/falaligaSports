@@ -13,9 +13,9 @@ export function PlayerCard({ player, owners, isActive = false }: PlayerCardProps
 
   return (
     <div 
-      className={`relative rounded-2xl overflow-hidden border transition-all duration-300 bg-[#161616] text-slate-200 ${
+      className={`relative rounded-2xl overflow-hidden border transition-all duration-300 bg-[#161616] text-slate-200 h-full flex flex-col ${
         isActive 
-          ? 'border-amber-500 shadow-[0_0_20px_rgba(245,158,11,0.25)] ring-1 ring-amber-500 scale-[1.01]' 
+          ? 'border-fala-blue shadow-[0_0_20px_rgba(27,75,224,0.25)] ring-1 ring-fala-blue scale-[1.01]' 
           : 'border-white/10 hover:border-white/20 shadow-md'
       }`}
     >
@@ -24,19 +24,16 @@ export function PlayerCard({ player, owners, isActive = false }: PlayerCardProps
         player.status === 'SOLD' 
           ? 'from-emerald-500 to-teal-500' 
           : player.status === 'BIDDING'
-          ? 'from-amber-500 to-orange-500 animate-pulse'
+          ? 'from-fala-blue to-fala-magenta animate-pulse'
           : player.status === 'UNSOLD'
           ? 'from-rose-500 to-red-600'
           : 'from-slate-700 to-slate-800'
       }`} />
 
-      <div className="p-5">
+      <div className="p-5 flex-1 flex flex-col">
         {/* Top Badges */}
-        <div className="flex justify-between items-start gap-2 mb-4">
+        <div className="flex justify-between items-center gap-2 mb-4">
           <div className="flex flex-wrap gap-1.5">
-            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider bg-white/5 text-slate-300 border border-white/10">
-              {player.role}
-            </span>
             {player.gender && (
               <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider border ${
                 player.gender === 'Female' 
@@ -47,37 +44,65 @@ export function PlayerCard({ player, owners, isActive = false }: PlayerCardProps
               </span>
             )}
           </div>
-          <div className="flex flex-col items-end">
-            <span className="text-2xl font-black bg-gradient-to-r from-yellow-400 to-amber-500 bg-clip-text text-transparent">
+          <div className="flex items-center gap-1 bg-black/30 px-2.5 py-1 rounded-full border border-white/5">
+            <span className="text-sm font-black bg-gradient-to-r from-fala-magenta to-fala-blue bg-clip-text text-transparent font-display">
               ★ {player.skillRating}
             </span>
-            <span className="text-[9px] text-slate-500 uppercase tracking-widest font-bold">Skill Rating</span>
+            <span className="text-[9px] text-slate-500 uppercase tracking-widest font-black">Rating</span>
           </div>
         </div>
 
-        {/* Visual Avatar Section */}
-        <div className="flex items-center gap-4 mb-4">
-          <div className="relative flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-black/40 to-black/60 border border-white/10 text-4xl shadow-inner select-none">
-            {player.photoUrl || '👤'}
-            {isActive && (
-              <span className="absolute -top-1 -right-1 flex h-3 w-3">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-3 w-3 bg-amber-500"></span>
+        {/* Visual Avatar Section (BIG Prominent Player Photo) */}
+        <div className="relative w-full h-48 bg-gradient-to-b from-[#18181b] to-[#09090b] border border-white/10 rounded-xl overflow-hidden mb-4 group shadow-inner">
+          {/* Subtle ambient back-glow */}
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(27,75,224,0.12)_0%,transparent_75%)] pointer-events-none animate-pulse" />
+          
+          {player.photoUrl && (player.photoUrl.startsWith('http') || player.photoUrl.startsWith('/')) ? (
+            <img 
+              src={player.photoUrl} 
+              alt={player.name} 
+              referrerPolicy="no-referrer"
+              className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
+            />
+          ) : (
+            <div className="w-full h-full flex flex-col items-center justify-center relative bg-[radial-gradient(circle_at_center,rgba(27,75,224,0.06)_0%,transparent_60%)]">
+              {/* Massive stylized background emoji */}
+              <span className="text-7xl leading-none inline-block select-none transform transition-transform duration-500 group-hover:scale-110 drop-shadow-[0_4px_16px_rgba(0,0,0,0.6)]">
+                {player.photoUrl || '👤'}
               </span>
-            )}
-          </div>
+            </div>
+          )}
+
+          {isActive && (
+            <span className="absolute top-3 right-3 flex h-3.5 w-3.5">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-fala-magenta opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-3.5 w-3.5 bg-fala-magenta"></span>
+            </span>
+          )}
+
+          {/* Floating Role Badge */}
+          <span className="absolute bottom-3 left-3 px-2.5 py-1 bg-black/80 backdrop-blur-md text-slate-300 border border-white/10 rounded-lg text-[9px] font-black uppercase tracking-widest">
+            {player.role}
+          </span>
+        </div>
+
+        {/* Player Identity Details */}
+        <div className="flex justify-between items-start gap-3 mb-4">
           <div className="space-y-1">
-            <h3 className="text-lg font-bold text-white tracking-tight leading-tight">
+            <h3 className="text-lg font-black text-white tracking-tight leading-tight uppercase font-display">
               {player.name}
             </h3>
-            <p className="text-xs text-slate-400 flex items-center gap-1">
-              Base Price: <span className="font-mono text-amber-400 font-bold">🪙 {player.basePrice.toLocaleString()}</span>
-            </p>
             {player.falaLeague && (
-              <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-yellow-500/10 border border-yellow-500/20 text-[9px] font-bold text-yellow-400 uppercase tracking-wide">
-                <Trophy className="w-2.5 h-2.5 text-yellow-500" /> Fala League: {player.falaLeague}
+              <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-fala-blue/10 border border-fala-blue/20 text-[9px] font-bold text-fala-blue uppercase tracking-wide">
+                <Trophy className="w-2.5 h-2.5 text-fala-blue" /> {player.falaLeague}
               </div>
             )}
+          </div>
+          <div className="text-right flex-shrink-0">
+            <span className="text-[9px] text-slate-500 uppercase tracking-widest font-bold block">Base Price</span>
+            <span className="font-mono text-fala-green font-black text-sm flex items-center gap-1 justify-end">
+              🪙 {player.basePrice.toLocaleString()}
+            </span>
           </div>
         </div>
 
@@ -86,12 +111,12 @@ export function PlayerCard({ player, owners, isActive = false }: PlayerCardProps
           <div className="grid grid-cols-2 gap-x-4 gap-y-2">
             <div>
               <div className="flex justify-between text-[11px] text-slate-400 font-medium mb-1">
-                <span className="flex items-center gap-1"><Zap className="w-3 h-3 text-amber-400" /> Badminton</span>
+                <span className="flex items-center gap-1"><Zap className="w-3 h-3 text-fala-blue" /> Badminton</span>
                 <span>{player.stats.badminton || 0}%</span>
               </div>
               <div className="h-1.5 w-full bg-white/5 rounded-full overflow-hidden">
                 <div 
-                  className="h-full bg-gradient-to-r from-amber-500 to-amber-300 rounded-full" 
+                  className="h-full bg-gradient-to-r from-fala-blue to-fala-green rounded-full" 
                   style={{ width: `${player.stats.badminton || 0}%` }}
                 />
               </div>
@@ -152,7 +177,7 @@ export function PlayerCard({ player, owners, isActive = false }: PlayerCardProps
         </div>
 
         {/* Footer Status Display */}
-        <div className="mt-4 pt-3.5 border-t border-white/5 flex items-center justify-between">
+        <div className="mt-auto pt-3.5 border-t border-white/5 flex items-center justify-between">
           <span className="text-[11px] text-slate-500 uppercase tracking-widest font-bold">
             Status
           </span>
@@ -163,7 +188,7 @@ export function PlayerCard({ player, owners, isActive = false }: PlayerCardProps
               </span>
             )}
             {player.status === 'BIDDING' && (
-              <span className="px-2.5 py-1 rounded-lg text-xs font-semibold bg-amber-500/10 text-amber-400 border border-amber-500/20 animate-pulse">
+              <span className="px-2.5 py-1 rounded-lg text-xs font-semibold bg-fala-magenta/10 text-fala-magenta border border-fala-magenta/20 animate-pulse">
                 Bidding Active
               </span>
             )}
@@ -195,9 +220,9 @@ export function PlayerCard({ player, owners, isActive = false }: PlayerCardProps
 // Rules & Interactive Strategy Guide
 export function RulesBoard() {
   return (
-    <div className="bg-[#121212] border border-white/10 rounded-2xl p-6 text-slate-200 shadow-xl">
+    <div className="bg-[#121212] border border-white/10 rounded-2xl p-6 text-slate-200 shadow-xl font-sans">
       <div className="flex items-center gap-3 mb-5 border-b border-white/10 pb-4">
-        <div className="p-2 rounded-xl bg-amber-500/10 text-amber-500 border border-amber-500/20">
+        <div className="p-2 rounded-xl bg-fala-blue/10 text-fala-blue border border-fala-blue/20">
           <Trophy className="w-5 h-5" />
         </div>
         <div>
@@ -306,11 +331,11 @@ export function TieBreakerTool({ tiedOwners, onWinnerSelected }: TieBreakerToolP
   };
 
   return (
-    <div className="bg-black/60 border border-amber-500/20 rounded-2xl p-5 text-center relative overflow-hidden">
-      <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-amber-500 via-orange-500 to-amber-500 animate-pulse" />
+    <div className="bg-black/60 border border-fala-blue/20 rounded-2xl p-5 text-center relative overflow-hidden">
+      <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-fala-blue via-fala-magenta to-fala-green animate-pulse" />
       
       <div className="mb-4">
-        <span className="px-3 py-1 rounded-full text-[10px] font-extrabold uppercase tracking-widest bg-amber-500/10 text-amber-500 border border-amber-500/20">
+        <span className="px-3 py-1 rounded-full text-[10px] font-extrabold uppercase tracking-widest bg-fala-blue/10 text-fala-blue border border-fala-blue/20">
           ⚡ TIE-BREAKER GENERATOR
         </span>
         <h3 className="text-base font-bold text-white mt-2">Instant Random Resolver</h3>
@@ -321,14 +346,14 @@ export function TieBreakerTool({ tiedOwners, onWinnerSelected }: TieBreakerToolP
         {spinning ? (
           <div className="flex flex-col items-center gap-4">
             {/* Spinning Coin / Wheel visual */}
-            <div className="relative w-16 h-16 rounded-full border-4 border-amber-500 border-t-transparent animate-spin flex items-center justify-center">
+            <div className="relative w-16 h-16 rounded-full border-4 border-fala-blue border-t-transparent animate-spin flex items-center justify-center">
               <span className="text-2xl">🪙</span>
             </div>
-            <p className="text-xs text-amber-500 animate-pulse font-mono tracking-wider">FLIPPING COIN...</p>
+            <p className="text-xs text-fala-blue animate-pulse font-mono tracking-wider">FLIPPING COIN...</p>
           </div>
         ) : winner ? (
           <div className="flex flex-col items-center gap-3 animate-fade-in">
-            <div className="w-16 h-16 rounded-2xl flex items-center justify-center text-4xl bg-gradient-to-br from-yellow-400 to-amber-500 text-slate-950 shadow-[0_0_20px_rgba(245,158,11,0.4)] border border-yellow-300 font-extrabold">
+            <div className="w-16 h-16 rounded-2xl flex items-center justify-center text-4xl bg-gradient-to-br from-fala-blue to-fala-magenta text-white shadow-[0_0_20px_rgba(27,75,224,0.4)] border border-fala-blue/50 font-extrabold">
               👑
             </div>
             <div>
@@ -339,7 +364,7 @@ export function TieBreakerTool({ tiedOwners, onWinnerSelected }: TieBreakerToolP
             </div>
             <button
               onClick={() => onWinnerSelected(winner.id)}
-              className="mt-2 px-4 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-bold transition-all shadow-md"
+              className="mt-2 px-4 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-bold transition-all shadow-md cursor-pointer"
             >
               Confirm and Award Player
             </button>
@@ -359,7 +384,7 @@ export function TieBreakerTool({ tiedOwners, onWinnerSelected }: TieBreakerToolP
             </div>
             <button
               onClick={startSpin}
-              className="px-5 py-2.5 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-slate-950 rounded-xl text-xs font-extrabold uppercase tracking-wider transition-all shadow-lg active:scale-95"
+              className="px-5 py-2.5 bg-gradient-to-r from-fala-blue to-fala-magenta hover:from-fala-blue/90 hover:to-fala-magenta/90 text-white rounded-xl text-xs font-extrabold uppercase tracking-wider transition-all shadow-lg active:scale-95 cursor-pointer"
             >
               🎲 SPIN / FLIP COIN
             </button>

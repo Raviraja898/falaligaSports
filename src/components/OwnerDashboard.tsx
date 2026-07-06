@@ -110,7 +110,7 @@ export default function OwnerDashboard({
                     value={loginPassword}
                     onChange={(e) => setLoginPassword(e.target.value)}
                     placeholder="Enter team password"
-                    className="w-full px-4 py-2.5 bg-black/40 border border-white/10 focus:border-amber-500 rounded-xl text-sm text-slate-100 focus:outline-none transition-all pr-10"
+                    className="w-full px-4 py-2.5 bg-black/40 border border-white/10 focus:border-fala-blue rounded-xl text-sm text-slate-100 focus:outline-none transition-all pr-10"
                     required
                     autoFocus
                   />
@@ -123,7 +123,7 @@ export default function OwnerDashboard({
                   </button>
                 </div>
                 {!targetOwner.password && (
-                  <p className="text-[10px] text-amber-400 mt-1 font-semibold">
+                  <p className="text-[10px] text-fala-blue mt-1 font-semibold">
                     💡 Please ask the Admin for your team access credentials.
                   </p>
                 )}
@@ -150,7 +150,7 @@ export default function OwnerDashboard({
                 </button>
                 <button
                   type="submit"
-                  className="flex-1 py-2.5 bg-amber-500 hover:bg-amber-400 text-[#0a0a0a] rounded-xl text-xs font-black uppercase tracking-wider transition-all shadow-md cursor-pointer text-center"
+                  className="flex-1 py-2.5 bg-fala-blue hover:bg-fala-blue/90 text-white rounded-xl text-xs font-black uppercase tracking-wider transition-all shadow-md cursor-pointer text-center"
                 >
                   Verify Access
                 </button>
@@ -165,7 +165,7 @@ export default function OwnerDashboard({
     return (
       <div className="max-w-2xl mx-auto space-y-6">
         <div className="bg-[#121212] border border-white/10 p-8 rounded-2xl text-center shadow-xl space-y-6">
-          <div className="w-14 h-14 bg-amber-500/10 text-amber-500 border border-amber-500/20 rounded-2xl flex items-center justify-center mx-auto text-3xl">
+          <div className="w-14 h-14 bg-fala-blue/10 text-fala-blue border border-fala-blue/20 rounded-2xl flex items-center justify-center mx-auto text-3xl">
             🏆
           </div>
           <div>
@@ -178,16 +178,16 @@ export default function OwnerDashboard({
               <button
                 key={o.id}
                 onClick={() => setLoginOwnerId(o.id)}
-                className="flex items-center justify-between p-4 bg-black/40 hover:bg-white/5 border border-white/10 hover:border-amber-500/30 rounded-xl transition-all group text-left active:scale-[0.98] cursor-pointer"
+                className="flex items-center justify-between p-4 bg-black/40 hover:bg-white/5 border border-white/10 hover:border-fala-blue/30 rounded-xl transition-all group text-left active:scale-[0.98] cursor-pointer"
               >
                 <div className="flex items-center gap-3">
                   <div className="w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: o.color }} />
                   <div>
-                    <span className="text-sm font-bold text-slate-200 group-hover:text-amber-500 transition-colors">{o.name}</span>
+                    <span className="text-sm font-bold text-slate-200 group-hover:text-fala-blue transition-colors font-display">{o.name}</span>
                     <span className="text-[10px] text-slate-500 block">Initial Wallet: 🪙 {(o.initialWallet || o.wallet).toLocaleString()}</span>
                   </div>
                 </div>
-                <ChevronRight className="w-4 h-4 text-slate-600 group-hover:text-amber-500 transition-colors" />
+                <ChevronRight className="w-4 h-4 text-slate-600 group-hover:text-fala-blue transition-colors" />
               </button>
             ))}
           </div>
@@ -217,27 +217,39 @@ export default function OwnerDashboard({
     if (!activePlayer) return;
 
     const amount = parseInt(bidAmount);
-    if (isNaN(amount) || amount <= 0) {
+    if (isNaN(amount) || amount < 0) {
       setError('Please enter a valid positive number');
       return;
     }
 
-    // Wallet balance guard
-    if (amount > owner.wallet) {
-      setError(`Your budget is insufficient! You only have 🪙 ${owner.wallet} coins remaining.`);
+    // Zero bid rules
+    const minRequiredBid = isTiedAndEligible 
+      ? (auctionState.originalWinningAmount || 0) 
+      : activePlayer.basePrice;
+    const isOutOfMoney = owner.wallet === 0 || owner.wallet < minRequiredBid;
+    if (amount === 0 && !isOutOfMoney) {
+      setError(`A bid of 0 is only allowed if you are out of chips or money (your wallet: 🪙 ${owner.wallet.toLocaleString()} is greater than the player minimum bid 🪙 ${minRequiredBid.toLocaleString()}).`);
       return;
     }
 
-    // Base price guard (only for standard bidding)
-    if (!isTiebreaker && amount < activePlayer.basePrice) {
-      setError(`Your bid must be at least the base price of 🪙 ${activePlayer.basePrice} coins.`);
-      return;
-    }
+    if (amount > 0) {
+      // Wallet balance guard
+      if (amount > owner.wallet) {
+        setError(`Your budget is insufficient! You only have 🪙 ${owner.wallet.toLocaleString()} coins remaining.`);
+        return;
+      }
 
-    // Tie breaker price guard
-    if (isTiebreaker && auctionState.originalWinningAmount && amount < auctionState.originalWinningAmount) {
-      setError(`In the tie-breaker, your re-bid must be at least the previous tied bid of 🪙 ${auctionState.originalWinningAmount} coins.`);
-      return;
+      // Base price guard (only for standard bidding)
+      if (!isTiebreaker && amount < activePlayer.basePrice) {
+        setError(`Your bid must be at least the base price of 🪙 ${activePlayer.basePrice.toLocaleString()} coins.`);
+        return;
+      }
+
+      // Tie breaker price guard
+      if (isTiebreaker && auctionState.originalWinningAmount && amount < auctionState.originalWinningAmount) {
+        setError(`In the tie-breaker, your re-bid must be at least the previous tied bid of 🪙 ${auctionState.originalWinningAmount.toLocaleString()} coins.`);
+        return;
+      }
     }
 
     try {
@@ -284,10 +296,10 @@ export default function OwnerDashboard({
 
         <div className="flex items-center gap-3">
           <div className="bg-black/40 px-4 py-2 rounded-xl border border-white/5 flex items-center gap-2.5">
-            <Wallet className="w-4 h-4 text-amber-500" />
+            <Wallet className="w-4 h-4 text-fala-blue" />
             <div>
               <span className="text-[10px] text-slate-500 uppercase block tracking-wider font-semibold">Remaining Wallet</span>
-              <span className="text-sm font-mono text-amber-400 font-bold">🪙 {owner.wallet.toLocaleString()} coins</span>
+              <span className="text-sm font-mono text-fala-green font-bold">🪙 {owner.wallet.toLocaleString()} coins</span>
             </div>
           </div>
 
@@ -311,13 +323,13 @@ export default function OwnerDashboard({
           onClick={() => setDashboardTab('arena')}
           className={`pb-3 text-sm font-bold border-b-2 transition-all relative cursor-pointer ${
             dashboardTab === 'arena'
-              ? 'border-amber-500 text-amber-400 font-black'
+              ? 'border-fala-blue text-fala-blue font-black'
               : 'border-transparent text-slate-400 hover:text-slate-200'
           }`}
         >
           <span className="flex items-center gap-1.5">
             <Trophy className="w-4 h-4" /> Bidding Arena
-            {activePlayer && <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />}
+            {activePlayer && <span className="w-2 h-2 rounded-full bg-fala-magenta animate-pulse" />}
           </span>
         </button>
 
@@ -325,7 +337,7 @@ export default function OwnerDashboard({
           onClick={() => setDashboardTab('won')}
           className={`pb-3 text-sm font-bold border-b-2 transition-all relative cursor-pointer ${
             dashboardTab === 'won'
-              ? 'border-amber-500 text-amber-400 font-black'
+              ? 'border-fala-blue text-fala-blue font-black'
               : 'border-transparent text-slate-400 hover:text-slate-200'
           }`}
         >
@@ -338,7 +350,7 @@ export default function OwnerDashboard({
           onClick={() => setDashboardTab('upcoming')}
           className={`pb-3 text-sm font-bold border-b-2 transition-all relative cursor-pointer ${
             dashboardTab === 'upcoming'
-              ? 'border-amber-500 text-amber-400 font-black'
+              ? 'border-fala-blue text-fala-blue font-black'
               : 'border-transparent text-slate-400 hover:text-slate-200'
           }`}
         >
@@ -354,7 +366,7 @@ export default function OwnerDashboard({
         {/* Left Column: Player on Auction & Place Bid Form */}
         <div className="lg:col-span-7 space-y-6">
           <h3 className="text-sm font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2">
-            <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-ping" /> Active Bidding Arena
+            <span className="w-1.5 h-1.5 rounded-full bg-fala-magenta animate-ping" /> Active Bidding Arena
           </h3>
 
           {activePlayer ? (
@@ -374,11 +386,11 @@ export default function OwnerDashboard({
                 ) : myBid ? (
                   /* Bid is Already Placed */
                   <div className="p-5 bg-[#0a0a0a] border border-white/5 rounded-xl text-center space-y-4">
-                    <CheckCircle2 className="w-10 h-10 text-amber-500 mx-auto" />
+                    <CheckCircle2 className="w-10 h-10 text-fala-blue mx-auto" />
                     <div>
                       <h4 className="text-sm font-bold text-slate-200">Blind Bid Registered Successfully!</h4>
                       <p className="text-xs text-slate-400 mt-1">
-                        Your bid of <strong className="font-mono text-amber-400">🪙 {myBid.amount} coins</strong> is securely saved. It will remain hidden until revealed by the Admin.
+                        Your bid of <strong className="font-mono text-fala-green">🪙 {myBid.amount} coins</strong> is securely saved. It will remain hidden until revealed by the Admin.
                       </p>
                     </div>
                     {auctionState.status !== 'REVEALED' && (
@@ -393,7 +405,7 @@ export default function OwnerDashboard({
                 ) : auctionState.status === 'REVEALED' ? (
                   /* Admin is revealing bids */
                   <div className="p-5 bg-[#0a0a0a] border border-white/5 rounded-xl text-center space-y-2">
-                    <div className="w-3 h-3 rounded-full bg-amber-500 animate-pulse mx-auto" />
+                    <div className="w-3 h-3 rounded-full bg-fala-magenta animate-pulse mx-auto" />
                     <h4 className="text-xs font-bold text-slate-300">Revealing Bids...</h4>
                     <p className="text-xs text-slate-400">
                       The administrator is currently analyzing and revealing the blind bids. Please watch the main display.
@@ -418,20 +430,36 @@ export default function OwnerDashboard({
                         <span className="absolute left-3.5 top-1/2 -translate-y-1/2 font-bold text-slate-500 font-mono">
                           🪙
                         </span>
-                        <input
-                          type="number"
-                          value={bidAmount}
-                          onChange={(e) => setBidAmount(e.target.value)}
-                          placeholder={isTiedAndEligible ? `Min re-bid: ${auctionState.originalWinningAmount}` : `Enter amount (Min ${activePlayer.basePrice})`}
-                          className="w-full pl-8 pr-4 py-3 bg-[#0a0a0a] border border-white/10 focus:border-amber-500 rounded-xl text-sm font-mono text-amber-400 font-bold focus:outline-none transition-colors"
-                          min={isTiedAndEligible ? auctionState.originalWinningAmount : activePlayer.basePrice}
-                          max={owner.wallet}
-                          required
-                        />
+                        {(() => {
+                          const minRequiredBid = isTiedAndEligible 
+                            ? (auctionState.originalWinningAmount || 0) 
+                            : activePlayer.basePrice;
+                          const isOutOfMoney = owner.wallet === 0 || owner.wallet < minRequiredBid;
+                          const minBidAllowed = isOutOfMoney ? 0 : minRequiredBid;
+                          
+                          const placeholderText = isOutOfMoney
+                            ? "Wallet insufficient. Bid 0 is allowed."
+                            : isTiedAndEligible
+                              ? `Min re-bid: ${auctionState.originalWinningAmount}`
+                              : `Enter amount (Min ${activePlayer.basePrice})`;
+                              
+                          return (
+                            <input
+                              type="number"
+                              value={bidAmount}
+                              onChange={(e) => setBidAmount(e.target.value)}
+                              placeholder={placeholderText}
+                              className="w-full pl-8 pr-4 py-3 bg-[#0a0a0a] border border-white/10 focus:border-fala-blue rounded-xl text-sm font-mono text-fala-green font-bold focus:outline-none transition-colors"
+                              min={minBidAllowed}
+                              max={owner.wallet}
+                              required
+                            />
+                          );
+                        })()}
                       </div>
                       <button
                         type="submit"
-                        className="px-5 bg-amber-500 hover:bg-amber-400 text-[#0a0a0a] rounded-xl text-xs font-extrabold uppercase tracking-widest transition-all shadow-md flex items-center gap-1.5 active:scale-95 cursor-pointer font-black"
+                        className="px-5 bg-fala-blue hover:bg-fala-blue/90 text-white rounded-xl text-xs font-extrabold uppercase tracking-widest transition-all shadow-md flex items-center gap-1.5 active:scale-95 cursor-pointer font-black"
                       >
                         <Send className="w-3.5 h-3.5" /> Submit Bid
                       </button>
@@ -461,7 +489,7 @@ export default function OwnerDashboard({
           {/* Owner Roster */}
           <div className="bg-[#121212] border border-white/10 rounded-2xl p-5 shadow-md">
             <h3 className="text-sm font-bold text-slate-200 mb-4 flex items-center gap-1.5">
-              <Trophy className="w-4 h-4 text-amber-500" /> My Won Players ({myRoster.length})
+              <Trophy className="w-4 h-4 text-fala-blue" /> My Won Players ({myRoster.length})
             </h3>
 
             {(() => {
@@ -481,7 +509,7 @@ export default function OwnerDashboard({
                     </div>
                     <div className="flex justify-between">
                       <span>Remaining Wallet:</span>
-                      <span className="font-mono text-amber-400 font-bold">🪙 {owner.wallet.toLocaleString()} chips</span>
+                      <span className="font-mono text-fala-green font-bold">🪙 {owner.wallet.toLocaleString()} chips</span>
                     </div>
                     <div className="flex justify-between">
                       <span>Squad size limit:</span>
@@ -491,7 +519,7 @@ export default function OwnerDashboard({
                     </div>
                     <div className="flex justify-between">
                       <span>Girls Recruited:</span>
-                      <span className={`font-bold ${hasEnoughGirls ? 'text-emerald-400' : 'text-amber-400'}`}>
+                      <span className={`font-bold ${hasEnoughGirls ? 'text-emerald-400' : 'text-fala-magenta'}`}>
                         {girlsCount} / {minGirls}
                       </span>
                     </div>
@@ -504,7 +532,7 @@ export default function OwnerDashboard({
                   {/* Real-time compliance alert */}
                   <div className="mb-4">
                     {!hasEnoughGirls ? (
-                      <div className="px-3 py-2 bg-amber-500/10 border border-amber-500/20 rounded-xl text-xs text-amber-400 font-bold flex items-center gap-1.5">
+                      <div className="px-3 py-2 bg-fala-magenta/10 border border-fala-magenta/20 rounded-xl text-xs text-fala-magenta font-bold flex items-center gap-1.5">
                         <AlertCircle className="w-4 h-4" /> Need at least {minGirls - girlsCount} more girl(s) 👩
                       </div>
                     ) : myRoster.length > maxLimit ? (
@@ -541,7 +569,7 @@ export default function OwnerDashboard({
                       </div>
                     </div>
                     <div className="text-right">
-                      <span className="font-mono text-xs text-amber-400 font-bold block">
+                      <span className="font-mono text-xs text-fala-green font-bold block">
                         🪙 {player.winningBid}
                       </span>
                       <span className="text-[9px] text-slate-500 block uppercase font-bold tracking-wider">Winning Bid</span>
@@ -562,8 +590,8 @@ export default function OwnerDashboard({
         <div className="space-y-6 animate-fade-in">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
-              <h3 className="text-lg font-bold text-slate-100 flex items-center gap-2">
-                <Trophy className="w-5 h-5 text-amber-500" /> My Recruited Squad
+              <h3 className="text-lg font-bold text-slate-100 flex items-center gap-2 font-display">
+                <Trophy className="w-5 h-5 text-fala-blue" /> My Recruited Squad
               </h3>
               <p className="text-xs text-slate-400">Review all the competitors your crew has successfully acquired in the auction</p>
             </div>
@@ -581,9 +609,9 @@ export default function OwnerDashboard({
                   {myRoster.filter(p => p.gender === 'Female').length} / {auctionState.minGirlsCount || 4}
                 </span>
               </div>
-              <div className="bg-[#f59e0b]/10 border border-[#f59e0b]/20 px-3 py-1.5 rounded-xl text-center">
-                <span className="text-[9px] text-[#f59e0b] font-bold uppercase block">Total Spent</span>
-                <span className="text-xs font-bold text-amber-400">
+              <div className="bg-fala-blue/10 border border-fala-blue/20 px-3 py-1.5 rounded-xl text-center">
+                <span className="text-[9px] text-fala-blue font-bold uppercase block">Total Spent</span>
+                <span className="text-xs font-bold text-fala-green">
                   🪙 {totalSpent.toLocaleString()}
                 </span>
               </div>
@@ -603,9 +631,9 @@ export default function OwnerDashboard({
               {myRoster.map(player => (
                 <div key={player.id} className="bg-[#121212] border border-white/10 rounded-2xl overflow-hidden flex flex-col justify-between">
                   <PlayerCard player={player} owners={owners} />
-                  <div className="bg-amber-500/10 p-3 border-t border-white/5 flex justify-between items-center text-xs">
-                    <span className="text-amber-400 font-bold">Winning Bid Amount:</span>
-                    <span className="font-mono text-amber-400 font-black">🪙 {player.winningBid?.toLocaleString()}</span>
+                  <div className="bg-fala-blue/10 p-3 border-t border-white/5 flex justify-between items-center text-xs">
+                    <span className="text-fala-blue font-bold">Winning Bid Amount:</span>
+                    <span className="font-mono text-fala-green font-black">🪙 {player.winningBid?.toLocaleString()}</span>
                   </div>
                 </div>
               ))}
@@ -619,8 +647,8 @@ export default function OwnerDashboard({
         <div className="space-y-6 animate-fade-in">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
-              <h3 className="text-lg font-bold text-slate-100 flex items-center gap-2">
-                <Layers className="w-5 h-5 text-amber-500" /> Upcoming Players Board
+              <h3 className="text-lg font-bold text-slate-100 flex items-center gap-2 font-display">
+                <Layers className="w-5 h-5 text-fala-blue" /> Upcoming Players Board
               </h3>
               <p className="text-xs text-slate-400">Preview details and stats for the upcoming players yet to be put up for bidding</p>
             </div>
@@ -644,7 +672,7 @@ export default function OwnerDashboard({
                     <PlayerCard player={player} owners={owners} />
                     <div className="bg-[#0a0a0a] p-3 border-t border-white/5 flex justify-between items-center text-xs">
                       <span className="text-slate-400">Base Bid Required:</span>
-                      <span className="font-mono text-amber-400 font-bold">🪙 {player.basePrice?.toLocaleString()}</span>
+                      <span className="font-mono text-fala-green font-bold">🪙 {player.basePrice?.toLocaleString()}</span>
                     </div>
                   </div>
                 ))}

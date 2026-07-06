@@ -5,6 +5,11 @@
   --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
   --font-display: "Space Grotesk", sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+  
+  --color-fala-gray: #8e9099;
+  --color-fala-magenta: #e1005a;
+  --color-fala-blue: #1b4be0;
+  --color-fala-green: #8ac43f;
 }
 
 @layer base {

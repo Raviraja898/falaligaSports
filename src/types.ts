@@ -45,5 +45,7 @@ export interface AuctionState {
   originalWinningAmount?: number; // the amount that was tied
   maxTeamSize?: number; // configurable team size limit (e.g. 15-20)
   minGirlsCount?: number; // configurable minimum girls required per team (e.g. 4)
+  defaultMinBid?: number; // configurable minimum bid for all players (e.g. 5000)
   autoRandomMode?: boolean; // automatically draft next random player
+  lastSoldPlayerId?: string | null;
 }
