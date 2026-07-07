@@ -553,12 +553,12 @@ export default function App() {
             <div>
               <div className="flex items-center gap-2">
                 <h1 className="font-black text-sm tracking-tight text-white uppercase flex items-center gap-1.5 font-display">
-                  Falabella Auction 4.0
+                  Falaliga Auction 4.0
                 </h1>
                 <div className="flex items-center gap-1 bg-black/40 px-2 py-1 rounded-full border border-white/10">
-                  <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: '#8e9099' }} title="Falabella Silver" />
-                  <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: '#e1005a' }} title="Falabella Magenta" />
-                  <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: '#1b4be0' }} title="Falabella Blue" />
+                  <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: '#8e9099' }} title="Falaliga Silver" />
+                  <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: '#e1005a' }} title="Falaliga Magenta" />
+                  <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: '#1b4be0' }} title="Falaliga Blue" />
                   <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: '#8ac43f' }} title="Falabella Lime" />
                 </div>
               </div>
@@ -587,7 +587,7 @@ export default function App() {
                   : 'text-slate-400 hover:text-slate-200'
               }`}
             >
-              Falabella Live 🔴
+              Falaliga Auction Live 🔴
             </button>
             <button
               onClick={() => setRole('OWNER')}
@@ -597,7 +597,7 @@ export default function App() {
                   : 'text-slate-400 hover:text-slate-200'
               }`}
             >
-              Falabella Owners
+              Falaliga Owners
             </button>
             <button
               onClick={() => setRole('ADMIN')}
@@ -658,15 +658,15 @@ export default function App() {
             ) : (
               /* If no active bidding and no previous sale, show a highly polished Welcome / Overview hero */
               <div className="text-center space-y-4 max-w-2xl mx-auto py-6">
-                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-[10px] font-extrabold uppercase tracking-widest bg-amber-500/10 text-amber-500 border border-amber-500/20">
+                {/* <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-[10px] font-extrabold uppercase tracking-widest bg-amber-500/10 text-amber-500 border border-amber-500/20">
                   <Sparkles className="w-3.5 h-3.5" /> FALABELLA INTEGRATION ARENA
-                </div>
+                </div> */}
                 <h2 className="text-4xl sm:text-5xl font-black text-white tracking-tight leading-none">
-                  Falaliga 4.0 Live Arena
+                  Falaliga 4.0 Live Auction
                 </h2>
-                <p className="text-sm text-slate-400 leading-relaxed">
+                {/* <p className="text-sm text-slate-400 leading-relaxed">
                   Welcome to the live public feed for Falaliga 4.0! Watch player cards spin continuously during active bidding, see sparkly blasts when players are won, and track rosters and budgets in real-time below.
-                </p>
+                </p> */}
               </div>
             )}
 
