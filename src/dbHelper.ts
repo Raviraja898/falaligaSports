@@ -284,11 +284,53 @@ export async function deleteAllPlayers() {
   });
 }
 
-// Update / Edit an existing player details
+// Update / Edit an existing player details with self-correcting wallet balance sync
 export async function updatePlayer(player: Player) {
-  const sanitized = JSON.parse(JSON.stringify(player));
   const playerRef = doc(db, 'players', player.id);
-  await setDoc(playerRef, sanitized, { merge: true });
+  const playerSnap = await getDoc(playerRef);
+  
+  if (!playerSnap.exists()) {
+    const sanitized = JSON.parse(JSON.stringify(player));
+    await setDoc(playerRef, sanitized, { merge: true });
+    return;
+  }
+  
+  const oldPlayer = playerSnap.data() as Player;
+  const batch = writeBatch(db);
+  
+  // 1. Refund old owner if previously SOLD
+  if (oldPlayer.status === 'SOLD' && oldPlayer.ownerId && oldPlayer.winningBid) {
+    const oldOwnerRef = doc(db, 'owners', oldPlayer.ownerId);
+    const oldOwnerSnap = await getDoc(oldOwnerRef);
+    if (oldOwnerSnap.exists()) {
+      const oldOwner = oldOwnerSnap.data() as Owner;
+      batch.update(oldOwnerRef, {
+        wallet: (oldOwner.wallet || 0) + oldPlayer.winningBid
+      });
+    }
+  }
+  
+  // 2. Deduct new owner if currently SOLD
+  if (player.status === 'SOLD' && player.ownerId && player.winningBid) {
+    const newOwnerRef = doc(db, 'owners', player.ownerId);
+    const newOwnerSnap = await getDoc(newOwnerRef);
+    if (newOwnerSnap.exists()) {
+      const newOwner = newOwnerSnap.data() as Owner;
+      let finalWallet = (newOwner.wallet || 0) - player.winningBid;
+      if (oldPlayer.status === 'SOLD' && oldPlayer.ownerId === player.ownerId) {
+        // Same owner, so just adjust
+        finalWallet = (newOwner.wallet || 0) + (oldPlayer.winningBid || 0) - player.winningBid;
+      }
+      batch.update(newOwnerRef, {
+        wallet: Math.max(0, finalWallet)
+      });
+    }
+  }
+  
+  // 3. Update player
+  const sanitized = JSON.parse(JSON.stringify(player));
+  batch.set(playerRef, sanitized, { merge: true });
+  await batch.commit();
 }
 
 // Delete an owner and reset their won players
@@ -573,3 +615,31 @@ export async function importAuctionBackup(backupData: any) {
     await writeBatchInstance.commit();
   }
 }
+
+// Update team staff (owner and co-owner player IDs)
+export async function updateOwnerTeamStaff(ownerId: string, ownerPlayerId: string | null, coOwnerPlayerId: string | null) {
+  const ownerRef = doc(db, 'owners', ownerId);
+  await updateDoc(ownerRef, {
+    ownerPlayerId: ownerPlayerId || null,
+    coOwnerPlayerId: coOwnerPlayerId || null
+  });
+}
+
+// Add an image to the database gallery
+export async function addGalleryImage(name: string, dataUrl: string) {
+  const imageId = `image_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`;
+  const imageRef = doc(db, 'gallery', imageId);
+  await setDoc(imageRef, {
+    id: imageId,
+    name,
+    dataUrl,
+    timestamp: Date.now()
+  });
+}
+
+// Delete an image from the database gallery
+export async function deleteGalleryImage(imageId: string) {
+  const imageRef = doc(db, 'gallery', imageId);
+  await deleteDoc(imageRef);
+}
+

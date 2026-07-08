@@ -17,6 +17,7 @@ export interface Player {
   };
   gender: 'Male' | 'Female';
   falaLeague?: string; // e.g. "First Place", "Second Place", "Third Place", or undefined
+  comments?: string; // comments about the player
 }
 
 export interface Owner {
@@ -26,6 +27,8 @@ export interface Owner {
   wallet: number; // remaining budget (starts at e.g. 1000)
   initialWallet: number;
   password?: string;
+  ownerPlayerId?: string;
+  coOwnerPlayerId?: string;
 }
 
 export interface Bid {

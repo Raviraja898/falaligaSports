@@ -69,6 +69,18 @@
         "originalWinningAmount": { "type": "number" }
       },
       "required": ["status"]
+    },
+    "GalleryImage": {
+      "title": "GalleryImage",
+      "description": "An uploaded image stored in the database library.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "dataUrl": { "type": "string" },
+        "timestamp": { "type": "number" }
+      },
+      "required": ["id", "name", "dataUrl", "timestamp"]
     }
   },
   "firestore": {
@@ -87,6 +99,10 @@
     "auction/status": {
       "schema": "AuctionState",
       "description": "Global status tracking the current round and phase."
+    },
+    "gallery/{imageId}": {
+      "schema": "GalleryImage",
+      "description": "Library of profile images uploaded by the administrator."
     }
   }
 }

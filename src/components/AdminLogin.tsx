@@ -13,7 +13,7 @@ export default function AdminLogin({ onSuccess, onCancel }: AdminLoginProps) {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (password === 'admin') {
+    if (password === 'Ravi@445799') {
       setError('');
       onSuccess();
     } else {
@@ -95,7 +95,7 @@ export default function AdminLogin({ onSuccess, onCancel }: AdminLoginProps) {
             <ArrowLeft className="w-3.5 h-3.5" /> Return to Lobby
           </button>
           <span className="text-[10px] text-slate-600 font-mono">
-            Default passcode: <span className="bg-white/5 px-1.5 py-0.5 rounded text-slate-400 border border-white/5">admin</span>
+            Passcode: <span className="bg-white/5 px-1.5 py-0.5 rounded text-slate-400 border border-white/5">Ravi@445799</span>
           </span>
         </div>
       </div>

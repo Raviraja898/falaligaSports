@@ -34,161 +34,17 @@ import AdminLogin from './components/AdminLogin';
 import { Trophy, Users, ShieldAlert, Star, Sparkles, HelpCircle, Search, SlidersHorizontal, EyeOff, RotateCcw } from 'lucide-react';
 import { PlayerCard } from './components/CommonUI';
 import { motion, AnimatePresence } from 'motion/react';
-
-// 3D Flipping Card for Live Bidding
-function FlippingCard({ player, owners, isBidding, isReading, onFlipNow }: { player: Player, owners: Owner[], isBidding: boolean, isReading: boolean, onFlipNow?: () => void }) {
+// Big Static Player Card for Live Bidding
+function FlippingCard({ player, owners }: { player: Player, owners: Owner[] }) {
   return (
-    <div className="perspective-1000 w-full max-w-sm mx-auto h-[550px] relative">
-      <motion.div
-        className="w-full h-full transform-style-3d relative"
-        animate={isReading ? { rotateY: 0 } : (isBidding ? { rotateY: [180, 540] } : { rotateY: 0 })}
-        transition={isReading ? { duration: 0.8 } : (isBidding ? { repeat: Infinity, duration: 6, ease: "linear" } : { duration: 0.8 })}
-      >
-        {/* Front Face of the Card */}
-        <div className="absolute inset-0 backface-hidden w-full h-full">
-          <PlayerCard player={player} owners={owners} isActive={true} />
-        </div>
-        
-        {/* Back Face of the Card */}
-        <div className="absolute inset-0 backface-hidden w-full h-full rotate-y-180 bg-[#0c0c0e] border-2 border-fala-magenta/30 rounded-2xl flex flex-col items-center justify-end text-center shadow-2xl relative overflow-hidden">
-          {/* Main big image showing active competitor's actual image/placeholder during rotation */}
-          {player.photoUrl && (player.photoUrl.startsWith('http') || player.photoUrl.startsWith('/')) ? (
-            <img 
-              src={player.photoUrl} 
-              alt={player.name} 
-              className="absolute inset-0 w-full h-full object-cover opacity-80 transition-transform duration-700" 
-              referrerPolicy="no-referrer"
-            />
-          ) : (
-            <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-b from-[#18181b] to-[#09090b]">
-              <span className="text-[120px] opacity-20 select-none">{player.photoUrl || '👤'}</span>
-            </div>
-          )}
-          {/* Subtle gradient overlay to keep text highly legible */}
-          <div className="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-black/30 pointer-events-none" />
-          
-          {/* Text/interactive elements on top of the image */}
-          <div className="relative z-10 p-6 flex flex-col items-center justify-center h-full w-full">
-            <h3 className="text-3xl font-extrabold text-fala-magenta tracking-wider font-display uppercase drop-shadow-[0_2px_8px_rgba(0,0,0,0.9)] animate-pulse">
-              FALALIGA 4.0
-            </h3>
-            <p className="text-sm text-slate-100 mt-1.5 uppercase tracking-widest font-black drop-shadow-[0_1px_4px_rgba(0,0,0,0.9)]">
-              BIDDING ACTIVE
-            </p>
-            <div className="mt-8 flex items-center gap-2.5 px-4 py-2 bg-fala-magenta hover:bg-fala-magenta/80 text-white text-xs font-black uppercase tracking-widest rounded-full shadow-lg transition-all animate-bounce">
-              <span className="w-2.5 h-2.5 rounded-full bg-white animate-ping" /> Place Blind Bid
-            </div>
-          </div>
-        </div>
-      </motion.div>
-
-      {isReading && onFlipNow && (
-        <div className="absolute -bottom-14 left-0 right-0 flex justify-center">
-          <button
-            onClick={onFlipNow}
-            className="px-4 py-2 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 rounded-xl text-xs font-black uppercase tracking-wider flex items-center gap-1.5 transition-all shadow-lg cursor-pointer transform hover:scale-105 active:scale-95"
-          >
-            🔄 Skip & Start Bid
-          </button>
-        </div>
-      )}
+    <div className="w-full max-w-none relative">
+      <PlayerCard player={player} owners={owners} isActive={true} isAuctionScreen={true} />
     </div>
   );
 }
 
-// Sparkles / Celebratory Overlay for Player Acquisition
-function WinnerCelebrationOverlay({ player, winningOwner, onClose }: { player: Player, winningOwner: Owner, onClose: () => void }) {
-  return (
-    <div className="fixed inset-0 z-50 bg-[#0a0a0af2] backdrop-blur-xl flex flex-col items-center justify-center p-6 text-center overflow-hidden">
-      {/* Interactive sparkles/bursts */}
-      <div className="absolute inset-0 pointer-events-none overflow-hidden">
-        {[...Array(50)].map((_, i) => {
-          const size = Math.random() * 8 + 4;
-          const left = Math.random() * 100;
-          const delay = Math.random() * 4;
-          const duration = Math.random() * 3 + 2;
-          return (
-            <motion.div
-              key={i}
-              className="absolute rounded-full"
-              style={{
-                width: size,
-                height: size,
-                left: `${left}%`,
-                top: '110%',
-                backgroundColor: winningOwner.color || '#f59e0b',
-                boxShadow: `0 0 12px ${winningOwner.color || '#f59e0b'}`,
-              }}
-              animate={{
-                top: '-10%',
-                x: [0, (Math.random() - 0.5) * 200],
-                rotate: [0, 360],
-              }}
-              transition={{
-                duration: duration,
-                repeat: Infinity,
-                delay: delay,
-                ease: "easeOut",
-              }}
-            />
-          );
-        })}
-      </div>
+// Sparkles / Celebratory Overlay for Player Acquisition has been disabled as requested
 
-      <motion.div
-        initial={{ scale: 0.4, opacity: 0 }}
-        animate={{ scale: 1, opacity: 1 }}
-        exit={{ scale: 0.4, opacity: 0 }}
-        transition={{ type: "spring", damping: 15 }}
-        className="max-w-xl w-full space-y-8 bg-gradient-to-b from-[#161616] to-[#0c0c0c] border border-white/10 p-8 rounded-3xl shadow-2xl relative"
-        style={{ boxShadow: `0 0 50px ${(winningOwner.color || '#f59e0b')}40` }}
-      >
-        <div className="absolute top-0 left-0 w-full h-1.5" style={{ backgroundColor: winningOwner.color }} />
-        
-        <div className="space-y-2">
-          <span className="px-4 py-1.5 rounded-full text-xs font-black uppercase tracking-widest bg-fala-magenta/10 text-fala-magenta border border-fala-magenta/20 inline-block animate-bounce">
-            🎉 PLAYER WON 🎉
-          </span>
-          <h2 className="text-4xl font-black text-white tracking-tight leading-none mt-2">
-            ACQUISITION SUCCESS
-          </h2>
-        </div>
-
-        <div className="flex flex-col items-center justify-center gap-4 my-6">
-          <div 
-            className="px-6 py-3.5 rounded-2xl border text-xl font-black uppercase tracking-wider shadow-lg flex items-center gap-3 animate-pulse"
-            style={{ 
-              backgroundColor: `${winningOwner.color}15`, 
-              borderColor: winningOwner.color,
-              color: winningOwner.color
-            }}
-          >
-            <Trophy className="w-6 h-6" /> {winningOwner.name}
-          </div>
-          
-          <div className="text-slate-400 text-xs font-black uppercase tracking-widest">
-            HAS ACQUIRED
-          </div>
-
-          <div className="bg-black/60 p-6 rounded-2xl border border-white/10 w-full flex items-center gap-4 justify-center">
-            <div className="text-4xl">{player.photoUrl || '👤'}</div>
-            <div className="text-left">
-              <h3 className="text-2xl font-black text-white leading-tight">{player.name}</h3>
-              <p className="text-xs text-fala-green font-bold uppercase tracking-wider mt-1">Winning Bid: 🪙 {player.winningBid?.toLocaleString()} Coins</p>
-            </div>
-          </div>
-        </div>
-
-        <button
-          onClick={onClose}
-          className="px-6 py-2.5 bg-white text-slate-950 font-black rounded-xl text-xs hover:bg-slate-200 transition-all cursor-pointer shadow-md uppercase tracking-widest"
-        >
-          Resume Live Stream
-        </button>
-      </motion.div>
-    </div>
-  );
-}
 
 // Page level continuous celebration blasts for the Falabella Live Arena view
 function PageLevelBlasts({ color }: { color: string }) {
@@ -303,7 +159,6 @@ export default function App() {
   });
   const [isReadingMode, setIsReadingMode] = useState<boolean>(false);
   const [readingSecondsLeft, setReadingSecondsLeft] = useState<number>(0);
-  const [showCelebration, setShowCelebration] = useState(false);
   const prevSoldIdsRef = React.useRef<string[]>([]);
   const isFirstLoadRef = React.useRef<boolean>(true);
 
@@ -394,12 +249,12 @@ export default function App() {
     };
   }, []);
 
-  // Monitor players collection for new sales in real-time to trigger celebration
+  // Monitor players collection for new sales in real-time
   useEffect(() => {
     if (players.length > 0) {
       const soldPlayers = players.filter(p => p.status === 'SOLD' && p.ownerId && p.winningBid);
       
-      // Initialize ref on first load so we don't celebrate historical sold players
+      // Initialize ref on first load so we don't trigger updates for historical sold players
       if (isFirstLoadRef.current) {
         prevSoldIdsRef.current = soldPlayers.map(p => p.id);
         isFirstLoadRef.current = false;
@@ -411,57 +266,12 @@ export default function App() {
         setLastSoldPlayer(newlySold);
         setLastSoldPlayerId(newlySold.id);
         localStorage.setItem('last_sold_player_id', newlySold.id);
-        
-        // ONLY trigger fullscreen overlay & initial confetti if we are currently on the Falabella Live view!
-        if (role === 'USER_SELECTION') {
-          setShowCelebration(true);
-          
-          // Trigger beautiful 5-second confetti blast using winning team's color
-          const winningOwner = owners.find(o => o.id === newlySold.ownerId);
-          const mainColor = winningOwner?.color || '#f59e0b';
-          const colors = [mainColor, '#ffffff', '#f59e0b', '#ec4899', '#3b82f6'];
-          
-          const duration = 5000;
-          const animationEnd = Date.now() + duration;
-          
-          const frame = () => {
-            const timeLeft = animationEnd - Date.now();
-            if (timeLeft <= 0) return;
-            
-            confetti({
-              particleCount: 3,
-              angle: 60,
-              spread: 55,
-              origin: { x: 0, y: 0.8 },
-              colors: colors
-            });
-            confetti({
-              particleCount: 3,
-              angle: 120,
-              spread: 55,
-              origin: { x: 1, y: 0.8 },
-              colors: colors
-            });
-            
-            requestAnimationFrame(frame);
-          };
-          
-          frame();
-          
-          // Auto dismiss celebration after 15 seconds as requested
-          const timer = setTimeout(() => {
-            setShowCelebration(false);
-          }, 15000);
-
-          prevSoldIdsRef.current = soldPlayers.map(p => p.id);
-          return () => clearTimeout(timer);
-        }
       }
 
       // Keep synced
       prevSoldIdsRef.current = soldPlayers.map(p => p.id);
     }
-  }, [players, owners, role]);
+  }, [players]);
 
   // Active player selected trigger for Reading Mode
   useEffect(() => {
@@ -512,30 +322,30 @@ export default function App() {
     );
   }
 
-  // if (dbEmpty) {
-  //   return (
-  //     <div className="min-h-screen bg-[#0a0a0a] flex items-center justify-center text-white p-6">
-  //       <div className="max-w-md w-full bg-[#121212] border border-white/10 rounded-3xl p-8 text-center space-y-6 shadow-2xl">
-  //         <div className="w-16 h-16 bg-amber-500/10 text-amber-500 border border-amber-500/20 rounded-2xl flex items-center justify-center mx-auto text-4xl">
-  //           🏟️
-  //         </div>
-  //         <div>
-  //           <h1 className="text-2xl font-black tracking-tight text-white">Arena Database Empty</h1>
-  //           <p className="text-xs text-slate-400 mt-2 leading-relaxed">
-  //             Before players can be auctioned, we need to seed the default roster of elite office competitors and create standard corporate team profiles.
-  //           </p>
-  //         </div>
-  //         <button
-  //           onClick={handleInitializeDb}
-  //           disabled={initializing}
-  //           className="w-full py-3 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-[#0a0a0a] font-black uppercase tracking-wider rounded-xl transition-all shadow-lg shadow-amber-500/10 disabled:opacity-50"
-  //         >
-  //           {initializing ? 'Seeding Arena Data...' : 'Initialize & Seed Database 🚀'}
-  //         </button>
-  //       </div>
-  //     </div>
-  //   );
-  // }
+  if (dbEmpty) {
+    return (
+      <div className="min-h-screen bg-[#0a0a0a] flex items-center justify-center text-white p-6">
+        <div className="max-w-md w-full bg-[#121212] border border-white/10 rounded-3xl p-8 text-center space-y-6 shadow-2xl">
+          <div className="w-16 h-16 bg-amber-500/10 text-amber-500 border border-amber-500/20 rounded-2xl flex items-center justify-center mx-auto text-4xl">
+            🏟️
+          </div>
+          <div>
+            <h1 className="text-2xl font-black tracking-tight text-white">Arena Database Empty</h1>
+            <p className="text-xs text-slate-400 mt-2 leading-relaxed">
+              Before players can be auctioned, we need to seed the default roster of elite office competitors and create standard corporate team profiles.
+            </p>
+          </div>
+          <button
+            onClick={handleInitializeDb}
+            disabled={initializing}
+            className="w-full py-3 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-[#0a0a0a] font-black uppercase tracking-wider rounded-xl transition-all shadow-lg shadow-amber-500/10 disabled:opacity-50"
+          >
+            {initializing ? 'Seeding Arena Data...' : 'Initialize & Seed Database 🚀'}
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   // General counts
   const soldCount = players.filter(p => p.status === 'SOLD').length;
@@ -553,12 +363,12 @@ export default function App() {
             <div>
               <div className="flex items-center gap-2">
                 <h1 className="font-black text-sm tracking-tight text-white uppercase flex items-center gap-1.5 font-display">
-                  Falaliga Auction 4.0
+                  FALALIGA AUCTION 4.0
                 </h1>
                 <div className="flex items-center gap-1 bg-black/40 px-2 py-1 rounded-full border border-white/10">
-                  <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: '#8e9099' }} title="Falaliga Silver" />
-                  <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: '#e1005a' }} title="Falaliga Magenta" />
-                  <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: '#1b4be0' }} title="Falaliga Blue" />
+                  <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: '#8e9099' }} title="Falabella Silver" />
+                  <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: '#e1005a' }} title="Falabella Magenta" />
+                  <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: '#1b4be0' }} title="Falabella Blue" />
                   <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: '#8ac43f' }} title="Falabella Lime" />
                 </div>
               </div>
@@ -587,7 +397,7 @@ export default function App() {
                   : 'text-slate-400 hover:text-slate-200'
               }`}
             >
-              Falaliga Auction Live 🔴
+              Falabella Live 🔴
             </button>
             <button
               onClick={() => setRole('OWNER')}
@@ -597,7 +407,7 @@ export default function App() {
                   : 'text-slate-400 hover:text-slate-200'
               }`}
             >
-              Falaliga Owners
+              Falabella Owners
             </button>
             <button
               onClick={() => setRole('ADMIN')}
@@ -617,31 +427,19 @@ export default function App() {
       <main className="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 lg:p-8">
         {role === 'USER_SELECTION' && (
           <div className="space-y-12 animate-fade-in">
-            {/* Real-time Celebration Overlay */}
-            <AnimatePresence>
-              {showCelebration && lastSoldPlayer && lastSoldPlayer.ownerId && (
-                (() => {
-                  const winningOwner = owners.find(o => o.id === lastSoldPlayer.ownerId);
-                  return winningOwner ? (
-                    <WinnerCelebrationOverlay
-                      player={lastSoldPlayer}
-                      winningOwner={winningOwner}
-                      onClose={() => setShowCelebration(false)}
-                    />
-                  ) : null;
-                })()
-              )}
-            </AnimatePresence>
 
             {/* Active Live Bidding Showcase */}
             {activePlayer ? (
-              <div className="max-w-5xl mx-auto animate-fade-in relative">
-                {/* Continuous visual sparkles/celebratory glow if the active player was just marked SOLD */}
-                {(() => {
-                  const winningOwner = activePlayer.ownerId ? owners.find(o => o.id === activePlayer.ownerId) : null;
-                  return winningOwner ? <PageLevelBlasts color={winningOwner.color} /> : null;
-                })()}
-                <PlayerCard player={activePlayer} owners={owners} isActive={true} />
+              <div className="bg-gradient-to-b from-[#111111] to-[#050505] border-2 border-fala-blue/30 p-8 rounded-3xl shadow-2xl relative overflow-hidden max-w-5xl mx-auto">
+                <div className="absolute top-0 right-0 w-32 h-32 bg-fala-blue/5 rounded-full blur-3xl pointer-events-none" />
+                <div className="absolute bottom-0 left-0 w-32 h-32 bg-fala-blue/5 rounded-full blur-3xl pointer-events-none" />
+                
+                <div className="w-full">
+                  <FlippingCard 
+                    player={activePlayer} 
+                    owners={owners} 
+                  />
+                </div>
               </div>
             ) : resolvedLastSoldPlayer ? (
               (() => {
@@ -649,26 +447,86 @@ export default function App() {
                 const teamColor = winningOwner?.color || '#10b981';
                 
                 return (
-                  <div className="max-w-5xl mx-auto animate-fade-in relative">
+                  /* Spectacular Live Sports broadcaster style "RECENTLY ACQUIRED" spotlight card with beautiful ongoing blasts */
+                  <div 
+                    className="bg-gradient-to-b from-[#111111] to-[#050505] border-2 p-8 rounded-3xl shadow-2xl relative overflow-hidden max-w-4xl mx-auto transition-all duration-500"
+                    style={{ 
+                      borderColor: `${teamColor}44`, 
+                      boxShadow: `0 0 40px ${teamColor}20`
+                    }}
+                  >
                     {winningOwner && <PageLevelBlasts color={teamColor} />}
-                    <PlayerCard player={resolvedLastSoldPlayer} owners={owners} isActive={true} />
+                    
+                    <div className="absolute top-0 right-0 w-32 h-32 rounded-full blur-3xl pointer-events-none" style={{ backgroundColor: `${teamColor}10` }} />
+                    <div className="absolute bottom-0 left-0 w-32 h-32 rounded-full blur-3xl pointer-events-none" style={{ backgroundColor: `${teamColor}10` }} />
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-12 gap-8 items-center relative z-10">
+                      {/* Left Column: Player Card */}
+                      <div className="md:col-span-5 flex justify-center pb-6 md:pb-0">
+                        <div className="w-full max-w-sm">
+                          <PlayerCard player={resolvedLastSoldPlayer} owners={owners} isActive={false} />
+                        </div>
+                      </div>
+
+                      {/* Right Column: Winning Owner & Team stats */}
+                      <div className="md:col-span-7">
+                        {(() => {
+                          if (!winningOwner) {
+                            return (
+                              <div className="text-center space-y-4 py-6">
+                                <p className="text-slate-400">This player went unsold in the latest round.</p>
+                                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-[10px] font-extrabold uppercase tracking-widest bg-amber-500/10 text-amber-500 border border-amber-500/20">
+                                  <Sparkles className="w-3.5 h-3.5" /> FALABELLA INTEGRATION ARENA
+                                </div>
+                              </div>
+                            );
+                          }
+
+                          return (
+                            <div className="space-y-8 py-4">
+                              <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-[10px] font-black uppercase tracking-widest rounded-full">
+                                🏆 RECENT ACQUISITION COMPLETED
+                              </div>
+
+                              <div className="space-y-6">
+                                {/* Highlight Player */}
+                                <div className="space-y-1">
+                                  <span className="text-[10px] font-black tracking-widest text-slate-500 uppercase">DRAFTED PLAYER</span>
+                                  <h2 className="text-4xl font-black text-white tracking-tight leading-none uppercase">
+                                    {resolvedLastSoldPlayer.name}
+                                  </h2>
+                                </div>
+
+                                {/* Highlight Team */}
+                                <div className="space-y-1">
+                                  <span className="text-[10px] font-black tracking-widest text-slate-500 uppercase">DRAFTED BY TEAM</span>
+                                  <h2 className="text-3xl font-black tracking-tight leading-none uppercase" style={{ color: teamColor }}>
+                                    {winningOwner.name}
+                                  </h2>
+                                </div>
+
+                                {/* Highlight Sold Amount */}
+                                <div className="space-y-1">
+                                  <span className="text-[10px] font-black tracking-widest text-slate-500 uppercase">SOLD AMOUNT</span>
+                                  <div className="text-4xl sm:text-5xl font-black text-amber-400 font-mono flex items-center gap-2">
+                                    🪙 {(resolvedLastSoldPlayer.winningBid || 0).toLocaleString()} <span className="text-xs text-slate-500 font-bold uppercase tracking-widest">coins</span>
+                                  </div>
+                                </div>
+                              </div>
+
+                              <div className="pt-4 border-t border-white/5 flex items-center gap-2 text-slate-600 text-[10px] font-bold uppercase tracking-widest animate-pulse">
+                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                                Ready for the next bidding cycle...
+                              </div>
+                            </div>
+                          );
+                        })()}
+                      </div>
+                    </div>
                   </div>
                 );
               })()
-            ) : (
-              /* If no active bidding and no previous sale, show a highly polished Welcome / Overview hero */
-              <div className="text-center space-y-4 max-w-2xl mx-auto py-6">
-                {/* <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-[10px] font-extrabold uppercase tracking-widest bg-amber-500/10 text-amber-500 border border-amber-500/20">
-                  <Sparkles className="w-3.5 h-3.5" /> FALABELLA INTEGRATION ARENA
-                </div> */}
-                <h2 className="text-4xl sm:text-5xl font-black text-white tracking-tight leading-none">
-                  Falaliga 4.0 Live Auction
-                </h2>
-                {/* <p className="text-sm text-slate-400 leading-relaxed">
-                  Welcome to the live public feed for Falaliga 4.0! Watch player cards spin continuously during active bidding, see sparkly blasts when players are won, and track rosters and budgets in real-time below.
-                </p> */}
-              </div>
-            )}
+            ) : null}
 
             {/* Showcase & Roster Boards */}
             <div className="border-t border-white/10 pt-10 space-y-6">
@@ -786,31 +644,58 @@ export default function App() {
                     <span className="text-[10px] font-semibold text-slate-500">REAL-TIME OVERVIEW</span>
                   </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
                     {owners.map(owner => {
                       const ownerPlayers = players.filter(p => p.ownerId === owner.id && p.status === 'SOLD');
                       const femaleCount = ownerPlayers.filter(p => p.gender === 'Female').length;
                       const spent = ownerPlayers.reduce((sum, p) => sum + (p.winningBid || 0), 0);
                       const budget = 1000000 - spent;
+
+                      const ownerPlayer = players.find(p => p.id === owner.ownerPlayerId);
+                      const coOwnerPlayer = players.find(p => p.id === owner.coOwnerPlayerId);
                       
                       return (
                         <div 
                           key={owner.id} 
-                          className="bg-[#121212] border border-white/10 rounded-2xl p-4 space-y-4 flex flex-col justify-between"
-                          style={{ borderTop: `4px solid ${owner.color}` }}
+                          className="bg-[#121212] border border-white/10 rounded-3xl p-6 space-y-5 flex flex-col justify-between shadow-2xl hover:border-white/20 hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-1"
+                          style={{ borderTop: `6px solid ${owner.color}` }}
                         >
                           {/* Header */}
-                          <div>
-                            <h5 className="font-extrabold text-sm text-white tracking-tight line-clamp-1">{owner.name}</h5>
-                            <p className="text-[10px] text-amber-500/90 font-black tracking-wider uppercase mt-0.5">🪙 {budget.toLocaleString()} CHIPS LEFT</p>
-                            <div className="grid grid-cols-2 gap-1.5 mt-2.5 text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                              <div className="bg-white/5 p-1 rounded text-center">
-                                <span className="block text-slate-500">Budget</span>
-                                <span className="text-amber-400">🪙 {budget.toLocaleString()}</span>
+                          <div className="space-y-4">
+                            <div>
+                              <h5 className="font-black text-lg text-slate-100 tracking-tight uppercase line-clamp-1 pb-1">{owner.name}</h5>
+                              
+                              {/* Owners & Co-owners display */}
+                              <div className="mt-2.5 space-y-2 border-t border-white/5 pt-2.5 mb-2">
+                                <div className="flex items-center gap-2 bg-black/20 p-2.5 rounded-xl border border-white/5">
+                                  <span className="text-sm">👑</span>
+                                  <div className="text-left leading-tight truncate">
+                                    <span className="text-[8px] text-slate-500 uppercase font-black tracking-widest block">Team Owner</span>
+                                    <span className="text-xs font-black text-slate-200 truncate block">
+                                      {ownerPlayer ? ownerPlayer.name : <span className="text-slate-600 italic font-semibold">Not Assigned</span>}
+                                    </span>
+                                  </div>
+                                </div>
+                                <div className="flex items-center gap-2 bg-black/20 p-2.5 rounded-xl border border-white/5">
+                                  <span className="text-sm">🤝</span>
+                                  <div className="text-left leading-tight truncate">
+                                    <span className="text-[8px] text-slate-500 uppercase font-black tracking-widest block">Co-Owner</span>
+                                    <span className="text-xs font-black text-slate-300 truncate block">
+                                      {coOwnerPlayer ? coOwnerPlayer.name : <span className="text-slate-600 italic font-semibold">Not Assigned</span>}
+                                    </span>
+                                  </div>
+                                </div>
                               </div>
-                              <div className="bg-white/5 p-1 rounded text-center">
-                                <span className="block text-slate-500">Girls</span>
-                                <span className={femaleCount >= 4 ? "text-emerald-400" : "text-pink-400"}>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-2 text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                              <div className="bg-white/5 p-2 rounded-xl text-center border border-white/5">
+                                <span className="block text-slate-500 text-[8px]">Budget</span>
+                                <span className="text-amber-400 text-xs font-black">🪙 {budget.toLocaleString()}</span>
+                              </div>
+                              <div className="bg-white/5 p-2 rounded-xl text-center border border-white/5">
+                                <span className="block text-slate-500 text-[8px]">Girls</span>
+                                <span className={`${femaleCount >= 4 ? "text-emerald-400" : "text-pink-400"} text-xs font-black`}>
                                   {femaleCount} / 4
                                 </span>
                               </div>
@@ -818,25 +703,25 @@ export default function App() {
                           </div>
 
                           {/* Players List */}
-                          <div className="space-y-1.5 flex-1 py-3 border-t border-b border-white/5 my-2 overflow-y-auto max-h-[180px] scrollbar-thin">
+                          <div className="space-y-1.5 flex-1 py-3 border-t border-b border-white/5 my-2 overflow-y-auto max-h-[220px] scrollbar-thin">
                             {ownerPlayers.length === 0 ? (
-                              <p className="text-[10px] text-slate-600 italic text-center py-4">No players won yet</p>
+                              <p className="text-[11px] text-slate-600 italic text-center py-6">No players won yet</p>
                             ) : (
                               ownerPlayers.map(p => (
-                                <div key={p.id} className="flex items-center justify-between text-[11px] bg-black/30 px-2 py-1 rounded">
-                                  <span className="text-slate-300 font-medium truncate max-w-[90px]" title={p.name}>
+                                <div key={p.id} className="flex items-center justify-between text-xs bg-black/30 px-2.5 py-1.5 rounded hover:bg-black/40 transition-colors">
+                                  <span className="text-slate-300 font-semibold truncate max-w-[120px]" title={p.name}>
                                     {p.gender === 'Female' ? '👩' : '👨'} {p.name}
                                   </span>
-                                  <span className="font-mono font-bold text-amber-500/90 text-[10px]">🪙{p.winningBid?.toLocaleString()}</span>
+                                  <span className="font-mono font-bold text-amber-500">🪙{p.winningBid?.toLocaleString()}</span>
                                 </div>
                               ))
                             )}
                           </div>
 
                           {/* Footer Info */}
-                          <div className="text-[10px] text-slate-500 font-bold flex items-center justify-between">
+                          <div className="text-[11px] text-slate-500 font-bold flex items-center justify-between">
                             <span>TOTAL PLAYERS:</span>
-                            <span className="text-slate-300">{ownerPlayers.length}</span>
+                            <span className="text-slate-200 bg-white/5 px-2 py-0.5 rounded-full font-mono text-xs">{ownerPlayers.length}</span>
                           </div>
                         </div>
                       );
@@ -967,7 +852,7 @@ export default function App() {
 
       {/* Footer */}
       <footer className="border-t border-white/10 py-6 text-center text-slate-600 text-xs mt-auto">
-        <p>© 2026 Falabella Falaliga 4.0 Bidding Arena. Powered by Google AI Studio & Firebase.</p>
+        <p>© 2026 FALALIGA AUCTION 4.0. Powered by Google AI Studio & Firebase.</p>
       </footer>
     </div>
   );

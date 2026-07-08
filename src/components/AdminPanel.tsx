@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Player, Owner, Bid, AuctionState } from '../types';
+import { collection, onSnapshot } from 'firebase/firestore';
+import { db } from '../firebase';
 import { 
   seedDatabase, 
   setActivePlayer, 
@@ -20,7 +22,10 @@ import {
   importAuctionBackup,
   deleteAllPlayers,
   updatePlayer,
-  deleteAllOwners
+  deleteAllOwners,
+  updateOwnerTeamStaff,
+  addGalleryImage,
+  deleteGalleryImage
 } from '../dbHelper';
 import { PlayerCard, TieBreakerTool } from './CommonUI';
 import { 
@@ -128,7 +133,7 @@ function parseCSV(text: string): any[] {
 // Maps parsed row to Player interface
 function mapCSVToPlayer(row: any, defaultMinBid: number): Player {
   const name = row.name || row['player name'] || row['fullname'] || row['full name'] || '';
-  const role = row.role || row['specialty'] || row['designation'] || row['role/specialty'] || 'Player';
+  const role = 'Athlete';
   
   const skillRatingRaw = row.skillrating || row['skill rating'] || row['skill'] || row['rating'] || '80';
   const skillRating = Number(skillRatingRaw);
@@ -142,6 +147,7 @@ function mapCSVToPlayer(row: any, defaultMinBid: number): Player {
   const gender: 'Male' | 'Female' = (genderRaw === 'male' || genderRaw === 'm' || genderRaw === 'boy' || genderRaw === 'man') ? 'Male' : 'Female';
   
   const falaLeague = row.falaleague || row['fala league'] || row['previous win'] || '';
+  const comments = row.comments || row.comment || row['about'] || row['description'] || '';
 
   // Specific sports stats
   const badminton = Number(row.badminton || row['badminton rating'] || 75);
@@ -163,6 +169,7 @@ function mapCSVToPlayer(row: any, defaultMinBid: number): Player {
     photoUrl: photoUrl.trim() || '📊',
     gender,
     falaLeague: falaLeague ? falaLeague.trim() : undefined,
+    comments: comments ? comments.trim() : undefined,
     stats: {
       badminton: isNaN(badminton) ? 75 : badminton,
       carroms: isNaN(carroms) ? 75 : carroms,
@@ -175,11 +182,71 @@ function mapCSVToPlayer(row: any, defaultMinBid: number): Player {
 
 export default function AdminPanel({ players, owners, bids, auctionState, onLogout }: AdminPanelProps) {
   const [resetting, setResetting] = useState(false);
-  const [activeTab, setActiveTab] = useState<'auction' | 'players' | 'rosters' | 'manage'>('auction');
+  const [activeTab, setActiveTab] = useState<'auction' | 'players' | 'rosters' | 'manage' | 'gallery'>('auction');
+  const [galleryImages, setGalleryImages] = useState<any[]>([]);
+  const [galleryUploading, setGalleryUploading] = useState(false);
+  const [bulkUploadStatus, setBulkUploadStatus] = useState<{ current: number; total: number; msg: string } | null>(null);
 
-  // Offline direct manual bidding states
-  const [manualBidAmount, setManualBidAmount] = useState<number>(0);
-  const [selectedWinnerId, setSelectedWinnerId] = useState<string>('');
+  // Auto-Match & Link Gallery Photos to Player Profiles
+  const handleAutoLinkPhotos = async () => {
+    if (galleryImages.length === 0) {
+      alert("Please upload some images to the gallery first!");
+      return;
+    }
+    if (players.length === 0) {
+      alert("No players registered in the database to link!");
+      return;
+    }
+
+    const confirmLink = confirm(
+      `Auto-Link will find photos in the gallery whose names match player names (e.g. image name "John Doe" matching player "John Doe"). If found, it will automatically link them in the database. Proceed?`
+    );
+    if (!confirmLink) return;
+
+    let linkedCount = 0;
+    setResetting(true);
+
+    try {
+      for (const player of players) {
+        const pNameClean = player.name.toLowerCase().trim().replace(/[^a-z0-9]/g, '');
+        if (!pNameClean) continue;
+        
+        // Find exact or substring match in galleryImages
+        const matchedImg = galleryImages.find(img => {
+          const imgNameClean = img.name.toLowerCase().trim().replace(/[^a-z0-9]/g, '');
+          return imgNameClean === pNameClean || 
+                 imgNameClean.includes(pNameClean) || 
+                 pNameClean.includes(imgNameClean);
+        });
+
+        if (matchedImg) {
+          await updatePlayer({
+            ...player,
+            photoUrl: matchedImg.dataUrl
+          });
+          linkedCount++;
+        }
+      }
+      alert(`Auto-Linking complete! 🎉 Successfully matched and updated ${linkedCount} player profiles in real-time!`);
+    } catch (err) {
+      console.error("Error auto-linking images:", err);
+      alert("Failed to auto-link photos to player profiles.");
+    } finally {
+      setResetting(false);
+    }
+  };
+
+  // Subscribe to gallery collection
+  useEffect(() => {
+    const unsub = onSnapshot(collection(db, 'gallery'), (snap) => {
+      const list: any[] = [];
+      snap.forEach((doc) => {
+        list.push({ id: doc.id, ...doc.data() });
+      });
+      setGalleryImages(list.sort((a, b) => b.timestamp - a.timestamp));
+    });
+    return () => unsub();
+  }, []);
 
   // Password management states
   const [passwordsState, setPasswordsState] = useState<Record<string, string>>({});
@@ -260,10 +327,10 @@ export default function AdminPanel({ players, owners, bids, auctionState, onLogo
   // Download Sample CSV Helper
   const downloadSampleCSV = () => {
     const csvContent = "data:text/csv;charset=utf-8,"
-      + "Name,Role,Gender,SkillRating,PhotoUrl,FalaLeague,Badminton,Carroms,Cricket,Football,TT\n"
-      + "Rachel Green,Frontend Specialist,Female,88,👩,First Place,90,75,60,50,85\n"
-      + "Tony Stark,Tech Architect,Male,98,🧙,,70,80,95,65,90\n"
-      + "John Doe,Product Manager,Male,80,📊,,85,85,85,85,85";
+      + "Name,Role,Gender,BasePrice,SkillRating,PhotoUrl,FalaLeague,Badminton,Carroms,Cricket,Football,TT,Comments\n"
+      + "Rachel Green,Frontend Specialist,Female,5000,88,👩,First Place,90,75,60,50,85,Great team player and strong badminton smash!\n"
+      + "Tony Stark,Tech Architect,Male,7500,98,🧙,,70,80,95,65,90,Experienced mentor with solid cricket drive.\n"
+      + "John Doe,Product Manager,Male,,80,📊,,85,85,85,85,85,Consistent all-rounder and great strategist.";
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement("a");
     link.setAttribute("href", encodedUri);
@@ -279,14 +346,16 @@ export default function AdminPanel({ players, owners, bids, auctionState, onLogo
       alert(`The roster for "${owner.name}" is currently empty.`);
       return;
     }
-    const headers = ['Player Name', 'Gender', 'Role', 'Skill Rating', 'Winning Bid (Coins)', 'Fala League Status'];
+    const headers = ['Player Name', 'Gender', 'Role', 'Skill Rating', 'Base Price (Coins)', 'Winning Bid (Coins)', 'Fala League Status', 'Comments'];
     const rows = teamRoster.map(p => [
       p.name,
       p.gender,
       p.role,
       p.skillRating,
+      p.basePrice,
       p.winningBid || 0,
-      p.falaLeague || 'None'
+      p.falaLeague || 'None',
+      p.comments || ''
     ]);
     
     const csvRows = [headers.join(','), ...rows.map(e => e.map(val => `"${val.toString().replace(/"/g, '""')}"`).join(','))];
@@ -334,6 +403,7 @@ export default function AdminPanel({ players, owners, bids, auctionState, onLogo
   const [playerFootball, setPlayerFootball] = useState(75);
   const [playerTT, setPlayerTT] = useState(75);
   const [playerFalaLeague, setPlayerFalaLeague] = useState('');
+  const [playerComments, setPlayerComments] = useState('');
   const [playerSuccessMsg, setPlayerSuccessMsg] = useState('');
 
   // Player editing states
@@ -345,11 +415,19 @@ export default function AdminPanel({ players, owners, bids, auctionState, onLogo
   const [editGender, setEditGender] = useState<'Male' | 'Female'>('Female');
   const [editPhotoUrl, setEditPhotoUrl] = useState('');
   const [editFalaLeague, setEditFalaLeague] = useState('');
+  const [editComments, setEditComments] = useState('');
   const [editStatBadminton, setEditStatBadminton] = useState(75);
   const [editStatCarroms, setEditStatCarroms] = useState(75);
   const [editStatCricket, setEditStatCricket] = useState(75);
   const [editStatFootball, setEditStatFootball] = useState(75);
   const [editStatTT, setEditStatTT] = useState(75);
+  const [editOwnerId, setEditOwnerId] = useState<string>('');
+  const [editWinningBid, setEditWinningBid] = useState<number>(0);
+  const [editStatus, setEditStatus] = useState<'AVAILABLE' | 'BIDDING' | 'SOLD' | 'UNSOLD'>('AVAILABLE');
+
+  // Offline bidding states
+  const [offlineWinnerId, setOfflineWinnerId] = useState<string>('');
+  const [offlineWinningAmount, setOfflineWinningAmount] = useState<string>('');
 
   // Owner form state
   const [newOwnerName, setNewOwnerName] = useState('');
@@ -360,18 +438,19 @@ export default function AdminPanel({ players, owners, bids, auctionState, onLogo
   // Handle Add Player
   const handleAddPlayerSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!playerName.trim()) return;
+    if (!playerName.trim() || !playerRole.trim()) return;
 
     const newPlayer: Player = {
       id: `player_${Date.now()}`,
       name: playerName.trim(),
-      role: 'Competitor',
+      role: playerRole.trim(),
       basePrice: Number(playerBasePrice),
       skillRating: Number(playerSkillRating),
       status: 'AVAILABLE',
       photoUrl: playerEmoji,
       gender: playerGender,
       falaLeague: playerFalaLeague.trim() || undefined,
+      comments: playerComments.trim() || undefined,
       stats: {
         badminton: Number(playerBadminton),
         carroms: Number(playerCarroms),
@@ -396,6 +475,7 @@ export default function AdminPanel({ players, owners, bids, auctionState, onLogo
       setPlayerFootball(75);
       setPlayerTT(75);
       setPlayerFalaLeague('');
+      setPlayerComments('');
       setTimeout(() => setPlayerSuccessMsg(''), 4000);
     } catch (err) {
       console.error('Failed to add player:', err);
@@ -472,17 +552,26 @@ export default function AdminPanel({ players, owners, bids, auctionState, onLogo
     setEditGender(player.gender);
     setEditPhotoUrl(player.photoUrl || '');
     setEditFalaLeague(player.falaLeague || '');
+    setEditComments(player.comments || '');
     setEditStatBadminton(player.stats?.badminton ?? 75);
     setEditStatCarroms(player.stats?.carroms ?? 75);
     setEditStatCricket(player.stats?.cricket ?? 75);
     setEditStatFootball(player.stats?.football ?? 75);
     setEditStatTT(player.stats?.tt ?? 75);
+    setEditOwnerId(player.ownerId || '');
+    setEditWinningBid(player.winningBid || 0);
+    setEditStatus(player.status || 'AVAILABLE');
   };
 
   // Handle Save Player Edit
   const handleSavePlayerEdit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingPlayer) return;
+
+    if (editStatus === 'SOLD' && !editOwnerId) {
+      alert('Please select a Winning Team if status is set to SOLD.');
+      return;
+    }
 
     const updatedPlayer: Player = {
       ...editingPlayer,
@@ -493,6 +582,10 @@ export default function AdminPanel({ players, owners, bids, auctionState, onLogo
       gender: editGender,
       photoUrl: editPhotoUrl.trim() || '📊',
       falaLeague: editFalaLeague.trim() || undefined,
+      comments: editComments.trim() || undefined,
+      status: editStatus,
+      ownerId: editStatus === 'SOLD' ? editOwnerId : undefined,
+      winningBid: editStatus === 'SOLD' ? Number(editWinningBid) : undefined,
       stats: {
         badminton: Number(editStatBadminton),
         carroms: Number(editStatCarroms),
@@ -635,7 +728,10 @@ export default function AdminPanel({ players, owners, bids, auctionState, onLogo
 
   // Start auto random draft from scratch
   const handleStartAutoRandomDraft = async () => {
-    const remainingPlayers = players.filter(p => p.status === 'AVAILABLE' || p.status === 'UNSOLD');
+    const remainingPlayers = players.filter(p => 
+      (p.status === 'AVAILABLE' || p.status === 'UNSOLD') && 
+      !staffPlayerIds.has(p.id)
+    );
     if (remainingPlayers.length === 0) {
       alert('All players are drafted or completed!');
       return;
@@ -656,7 +752,10 @@ export default function AdminPanel({ players, owners, bids, auctionState, onLogo
   // Auto random mode driver effect
   useEffect(() => {
     if (auctionState.autoRandomMode && auctionState.status === 'IDLE' && !auctionState.activePlayerId) {
-      const remainingPlayers = players.filter(p => p.status === 'AVAILABLE' || p.status === 'UNSOLD');
+      const remainingPlayers = players.filter(p => 
+        (p.status === 'AVAILABLE' || p.status === 'UNSOLD') && 
+        !staffPlayerIds.has(p.id)
+      );
       
       if (remainingPlayers.length > 0) {
         const randomIndex = Math.floor(Math.random() * remainingPlayers.length);
@@ -684,14 +783,22 @@ export default function AdminPanel({ players, owners, bids, auctionState, onLogo
     }
   }, [auctionState.autoRandomMode, auctionState.status, auctionState.activePlayerId, players]);
 
+  // Staff Player IDs (Team Owners and Co-Owners) that should be excluded from bidding
+  const staffPlayerIds = new Set(
+    owners
+      .map(o => [o.ownerPlayerId, o.coOwnerPlayerId])
+      .flat()
+      .filter(Boolean) as string[]
+  );
 
   // Find active player
   const activePlayer = players.find(p => p.id === auctionState.activePlayerId);
 
+  // Synchronize offline bidding state when active player changes
   useEffect(() => {
     if (activePlayer) {
-      setManualBidAmount(activePlayer.basePrice || 0);
-      setSelectedWinnerId('');
+      setOfflineWinnerId('');
+      setOfflineWinningAmount('0');
     }
   }, [activePlayer?.id]);
 
@@ -714,6 +821,11 @@ export default function AdminPanel({ players, owners, bids, auctionState, onLogo
 
   // Database Reset handler
   const handleReset = async () => {
+    const password = prompt('Please enter the admin password to confirm database reset:');
+    if (password !== 'Ravi@445799') {
+      alert('Incorrect password! Reset cancelled.');
+      return;
+    }
     if (window.confirm('Are you absolutely sure you want to RESET the entire game database? This will clear all bids, wallets, and player rosters.')) {
       setResetting(true);
       try {
@@ -872,19 +984,29 @@ export default function AdminPanel({ players, owners, bids, auctionState, onLogo
         >
           Manage Players
         </button>
+        <button
+          onClick={() => setActiveTab('gallery')}
+          className={`px-4 py-2 text-xs font-bold transition-all border-b-2 -mb-[2px] cursor-pointer ${
+            activeTab === 'gallery' 
+              ? 'border-fala-blue text-fala-blue bg-white/5 rounded-t-lg' 
+              : 'border-transparent text-slate-400 hover:text-slate-200'
+          }`}
+        >
+          Image Gallery ({galleryImages.length})
+        </button>
       </div>
 
       {/* Tab Contents */}
       {activeTab === 'auction' && (
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
           {/* Active Card status */}
-          <div className="lg:col-span-5 space-y-6">
+          <div className="lg:col-span-6 space-y-6">
             <h2 className="text-sm font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1.5 font-display">
               <CircleDot className="w-4 h-4 text-fala-blue" /> Currently Auctioning
             </h2>
             {activePlayer ? (
               <div className="space-y-4">
-                <PlayerCard player={activePlayer} owners={owners} isActive={true} />
+                <PlayerCard player={activePlayer} owners={owners} isActive={true} isAuctionScreen={true} />
                 {auctionState.autoRandomMode && (
                   <div className="bg-fala-blue/10 border border-fala-blue/20 rounded-xl p-4 flex items-center justify-between gap-3">
                     <div className="flex items-center gap-2 text-xs font-bold text-fala-blue">
@@ -945,75 +1067,164 @@ export default function AdminPanel({ players, owners, bids, auctionState, onLogo
             )}
           </div>
 
-          {/* Real-time Bid Monitor & Controls */}
-          <div className="lg:col-span-7 space-y-6">
-            {activePlayer && (
+          {/* Offline Bidding Controls */}
+          <div className="lg:col-span-6 space-y-6">
+            {activePlayer ? (
               <div className="bg-[#121212] border border-white/10 rounded-2xl p-6 shadow-lg space-y-6">
                 <div>
                   <h3 className="text-base font-bold text-slate-100 flex items-center gap-1.5 font-display">
-                    🔨 Offline Bidding Controller
+                    <Award className="w-5 h-5 text-fala-blue" /> Offline Bidding Desk
                   </h3>
-                  <p className="text-xs text-slate-400 mt-1">
-                    Directly enter offline bid amount and select the team owner to award this player.
+                  <p className="text-xs text-slate-400 mt-1 font-sans">
+                    Directly award the player to the winning team and record the offline bid amount.
                   </p>
                 </div>
 
-                <div className="space-y-4 bg-black/40 p-4 rounded-xl border border-white/5">
-                  {/* Select Winner */}
+                <div className="space-y-4">
+                  {/* Select Winner Team */}
                   <div className="space-y-1.5">
-                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
-                      Select Winning Team Owner
-                    </label>
+                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block font-sans">Select Winning Team</label>
                     <select
-                      value={selectedWinnerId}
-                      onChange={(e) => setSelectedWinnerId(e.target.value)}
-                      className="w-full px-4 py-2.5 bg-black/60 border border-white/10 focus:border-fala-blue rounded-xl text-sm text-slate-200 font-bold focus:outline-none cursor-pointer"
+                      value={offlineWinnerId}
+                      onChange={(e) => setOfflineWinnerId(e.target.value)}
+                      className="w-full px-4 py-3 bg-black/40 border border-white/10 focus:border-fala-blue rounded-xl text-xs focus:outline-none transition-colors text-slate-100 font-bold font-sans"
                     >
-                      <option value="">-- Choose Team --</option>
-                      {owners.map(owner => (
-                        <option key={owner.id} value={owner.id}>
-                          {owner.name} (Budget: 🪙 {owner.wallet.toLocaleString()})
-                        </option>
-                      ))}
+                      <option value="">-- Choose Team / Owner --</option>
+                      {owners.map(owner => {
+                        const teamRoster = players.filter(p => p.ownerId === owner.id);
+                        return (
+                          <option key={owner.id} value={owner.id}>
+                            {owner.name} (🪙 {owner.wallet.toLocaleString()} left)
+                          </option>
+                        );
+                      })}
                     </select>
                   </div>
 
-                  {/* Manual Bid Value Input */}
+                  {/* Winning Bid Amount */}
                   <div className="space-y-1.5">
-                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
-                      Winning Bid Amount (Coins)
-                    </label>
-                    <input
-                      type="number"
-                      value={manualBidAmount}
-                      onChange={(e) => setManualBidAmount(Math.max(0, Number(e.target.value)))}
-                      className="w-full px-4 py-2.5 bg-black/60 border border-white/10 focus:border-fala-blue rounded-xl text-sm font-mono text-slate-100 focus:outline-none"
-                    />
+                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block font-sans">Winning Bid Value (Coins)</label>
+                    <div className="relative">
+                      <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500 font-bold">🪙</span>
+                      <input
+                        type="number"
+                        value={offlineWinningAmount}
+                        onChange={(e) => setOfflineWinningAmount(e.target.value)}
+                        placeholder="Enter final bid amount"
+                        className="w-full pl-10 pr-4 py-3 bg-black/40 border border-white/10 focus:border-fala-blue rounded-xl text-xs font-mono text-slate-100 focus:outline-none transition-colors"
+                      />
+                    </div>
+                    <p className="text-[10px] text-slate-500 font-sans">
+                      Start bidding at any offline price, and update the final sold price once completed.
+                    </p>
+                  </div>
+
+                  {/* Action Buttons */}
+                  <div className="flex flex-col sm:flex-row gap-3 pt-2">
+                    <button
+                      onClick={async () => {
+                        if (!offlineWinnerId) {
+                          alert("Please select a winning team first!");
+                          return;
+                        }
+                        const winningAmount = Number(offlineWinningAmount);
+                        if (isNaN(winningAmount) || winningAmount < 0) {
+                          alert("Please enter a valid winning bid amount!");
+                          return;
+                        }
+                        const winningOwner = owners.find(o => o.id === offlineWinnerId);
+                        if (!winningOwner) return;
+
+                        if (winningOwner.wallet < winningAmount) {
+                          if (!confirm(`Warning: Selected bid of 🪙 ${winningAmount.toLocaleString()} exceeds ${winningOwner.name}'s remaining wallet (🪙 ${winningOwner.wallet.toLocaleString()}).\n\nDo you still want to approve this assignment?`)) {
+                            return;
+                          }
+                        }
+
+                        try {
+                          await resolveAuction(activePlayer.id, offlineWinnerId, winningAmount, winningOwner.wallet);
+                        } catch (err) {
+                          console.error("Failed to approve bidding offline:", err);
+                          alert("Error approving bidding: " + (err instanceof Error ? err.message : String(err)));
+                        }
+                      }}
+                      className="flex-1 py-3 bg-gradient-to-r from-fala-blue to-emerald-600 hover:from-fala-blue/90 hover:to-emerald-600/90 text-white rounded-xl text-xs font-black uppercase tracking-wider transition-all shadow-md flex items-center justify-center gap-1.5 cursor-pointer font-sans"
+                    >
+                      <CheckCircle className="w-4 h-4" /> Approve Bid & Award
+                    </button>
+
+                    <button
+                      onClick={async () => {
+                        try {
+                          await resolveUnsold(activePlayer.id);
+                        } catch (err) {
+                          console.error("Failed to skip player:", err);
+                        }
+                      }}
+                      className="py-3 px-4 bg-white/5 hover:bg-rose-950/30 border border-white/10 hover:border-rose-900 text-rose-400 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-1 font-sans"
+                      title="Skip player if there are no bids"
+                    >
+                      <UserMinus className="w-4 h-4" /> Skip / Unsold
+                    </button>
                   </div>
                 </div>
 
-                {/* Operations Actions */}
-                <div className="pt-2 flex flex-col sm:flex-row gap-3">
-                  <button
-                    onClick={() => handleAwardPlayer(selectedWinnerId, manualBidAmount)}
-                    disabled={!selectedWinnerId || manualBidAmount <= 0}
-                    className="flex-1 py-3 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40 text-white rounded-xl text-xs font-black uppercase tracking-wider transition-all shadow-md flex items-center justify-center gap-1.5 cursor-pointer"
-                  >
-                    🏆 Approve & Award Player
-                  </button>
-                  <button
-                    onClick={handleUnsold}
-                    className="py-3 px-5 bg-rose-950/40 hover:bg-rose-900 border border-rose-900/30 text-rose-400 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap"
-                  >
-                    Mark as Unsold
-                  </button>
-                  <button
-                    onClick={() => handleRestartPlayerBidClick(activePlayer.id, activePlayer.name)}
-                    className="py-3 px-4 bg-white/5 hover:bg-white/10 border border-white/10 text-slate-400 hover:text-slate-200 rounded-xl text-xs font-semibold transition-all cursor-pointer whitespace-nowrap"
-                  >
-                    Cancel Draft
-                  </button>
+                {/* Real-time Status Table of Teams for Quick Verification */}
+                <div className="border-t border-white/10 pt-5 space-y-3">
+                  <div className="flex justify-between items-center">
+                    <h4 className="text-[10px] font-black uppercase tracking-wider text-slate-500 font-bold font-sans">Teams Overview & Caps</h4>
+                    <span className="text-[9px] text-slate-500 italic font-sans">Verify budgets & counts</span>
+                  </div>
+
+                  <div className="border border-white/5 rounded-xl overflow-hidden text-[11px] bg-black/20 font-sans">
+                    <table className="w-full text-left">
+                      <thead>
+                        <tr className="bg-black/40 text-slate-400 border-b border-white/5 font-bold uppercase tracking-wider text-[9px]">
+                          <th className="p-2">Team</th>
+                          <th className="p-2 text-right">Budget Left</th>
+                          <th className="p-2 text-center">Roster Size</th>
+                          <th className="p-2 text-center">Girls Required</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-white/5 text-slate-300">
+                        {owners.map(owner => {
+                          const teamRoster = players.filter(p => p.ownerId === owner.id);
+                          const girlsCount = teamRoster.filter(p => p.gender === 'Female').length;
+                          const maxLimit = auctionState.maxTeamSize || 15;
+                          const minGirls = auctionState.minGirlsCount || 4;
+
+                          const isSelected = owner.id === offlineWinnerId;
+
+                          return (
+                            <tr key={owner.id} className={`transition-colors ${isSelected ? 'bg-fala-blue/10 text-white font-bold' : 'hover:bg-white/5'}`}>
+                              <td className="p-2 flex items-center gap-1.5 truncate max-w-[120px]">
+                                <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: owner.color }} />
+                                <span className="truncate">{owner.name}</span>
+                              </td>
+                              <td className={`p-2 text-right font-mono font-bold ${owner.wallet < (Number(offlineWinningAmount) || 0) && isSelected ? 'text-rose-400' : 'text-amber-400'}`}>
+                                🪙 {owner.wallet.toLocaleString()}
+                              </td>
+                              <td className="p-2 text-center font-mono">
+                                {teamRoster.length} / {maxLimit}
+                              </td>
+                              <td className={`p-2 text-center font-mono font-bold ${girlsCount >= minGirls ? 'text-emerald-400' : 'text-amber-400'}`}>
+                                {girlsCount} / {minGirls}
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
+              </div>
+            ) : (
+              <div className="h-[400px] border border-dashed border-white/5 bg-black/10 rounded-2xl flex flex-col items-center justify-center text-center p-6 text-slate-600 font-sans">
+                <Layers className="w-10 h-10 mb-2 opacity-25" />
+                <p className="text-xs font-semibold">Bidding Console Inactive</p>
+                <p className="text-[11px] mt-1 max-w-sm">
+                  The bidding desk will activate once you select a competitor from the board or auto-pilot to start the offline auction.
+                </p>
               </div>
             )}
           </div>
@@ -1055,12 +1266,30 @@ export default function AdminPanel({ players, owners, bids, auctionState, onLogo
 
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
             {players.map(player => {
-              const canAuction = player.status === 'AVAILABLE' || player.status === 'UNSOLD';
+              const isStaff = staffPlayerIds.has(player.id);
+              const associatedOwner = isStaff 
+                ? owners.find(o => o.ownerPlayerId === player.id || o.coOwnerPlayerId === player.id)
+                : null;
+              const staffRole = associatedOwner 
+                ? (associatedOwner.ownerPlayerId === player.id ? 'Owner' : 'Co-Owner') 
+                : null;
+              const canAuction = (player.status === 'AVAILABLE' || player.status === 'UNSOLD') && !isStaff;
               return (
                 <div key={player.id} className="bg-[#121212] border border-white/10 rounded-2xl overflow-hidden flex flex-col justify-between group">
                   <div className="relative flex-1">
                     <PlayerCard player={player} owners={owners} />
                     
+                    {isStaff && associatedOwner && (
+                      <div className="absolute inset-0 bg-black/85 backdrop-blur-sm rounded-2xl flex flex-col items-center justify-center p-4 text-center">
+                        <span className="text-sm font-black uppercase tracking-widest mb-1" style={{ color: associatedOwner.color }}>
+                          👑 {staffRole} ({associatedOwner.name})
+                        </span>
+                        <span className="text-[10px] text-slate-400 font-bold uppercase">
+                          Excluded from Auction Pool
+                        </span>
+                      </div>
+                    )}
+
                     {canAuction && !auctionState.activePlayerId && (
                       <div className="absolute inset-0 bg-black/85 backdrop-blur-sm rounded-2xl flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-200">
                         <button
@@ -1148,7 +1377,7 @@ export default function AdminPanel({ players, owners, bids, auctionState, onLogo
                 </div>
 
                 <form onSubmit={handleSavePlayerEdit} className="space-y-4 text-xs">
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 gap-4">
                     <div className="space-y-1.5">
                       <label className="font-bold text-slate-300">Player Name</label>
                       <input
@@ -1159,21 +1388,21 @@ export default function AdminPanel({ players, owners, bids, auctionState, onLogo
                         className="w-full px-3 py-2 bg-black/40 border border-white/10 focus:border-blue-500 rounded-xl text-xs focus:outline-none transition-all text-slate-100"
                       />
                     </div>
-
-
                   </div>
 
-                  <div className="space-y-1.5">
-                    <label className="font-bold text-slate-300">Skill Rating (1-100)</label>
-                    <input
-                      type="number"
-                      required
-                      min="1"
-                      max="100"
-                      value={editSkillRating}
-                      onChange={(e) => setEditSkillRating(Number(e.target.value))}
-                      className="w-full px-3 py-2 bg-black/40 border border-white/10 focus:border-blue-500 rounded-xl text-xs focus:outline-none transition-all text-slate-100 font-mono"
-                    />
+                  <div className="grid grid-cols-1 gap-4">
+                    <div className="space-y-1.5">
+                      <label className="font-bold text-slate-300">Skill Rating (1-100)</label>
+                      <input
+                        type="number"
+                        required
+                        min="1"
+                        max="100"
+                        value={editSkillRating}
+                        onChange={(e) => setEditSkillRating(Number(e.target.value))}
+                        className="w-full px-3 py-2 bg-black/40 border border-white/10 focus:border-blue-500 rounded-xl text-xs focus:outline-none transition-all text-slate-100 font-mono"
+                      />
+                    </div>
                   </div>
 
                   <div className="grid grid-cols-3 gap-3">
@@ -1189,8 +1418,8 @@ export default function AdminPanel({ players, owners, bids, auctionState, onLogo
                       </select>
                     </div>
 
-                    <div className="space-y-1.5">
-                      <label className="font-bold text-slate-300">Photo / Emoji</label>
+                    <div className="space-y-1.5 col-span-2">
+                      <label className="font-bold text-slate-300">Photo / Emoji ({editPhotoUrl.startsWith('data:') ? 'Custom Photo' : editPhotoUrl})</label>
                       <input
                         type="text"
                         value={editPhotoUrl}
@@ -1199,7 +1428,33 @@ export default function AdminPanel({ players, owners, bids, auctionState, onLogo
                         className="w-full px-3 py-2 bg-black/40 border border-white/10 focus:border-blue-500 rounded-xl text-xs focus:outline-none transition-all text-slate-100"
                       />
                     </div>
+                  </div>
 
+                  {galleryImages.length > 0 && (
+                    <div className="space-y-1.5">
+                      <label className="font-bold text-slate-300 block">Select Uploaded Photo</label>
+                      <div className="flex gap-2 p-2 bg-black/30 rounded-xl border border-white/5 overflow-x-auto max-h-[85px]">
+                        {galleryImages.map((img) => {
+                          const isSelected = editPhotoUrl === img.dataUrl;
+                          return (
+                            <button
+                              key={img.id}
+                              type="button"
+                              onClick={() => setEditPhotoUrl(img.dataUrl)}
+                              className={`relative flex-shrink-0 w-12 h-12 rounded-lg overflow-hidden border-2 transition-all hover:scale-105 active:scale-95 cursor-pointer ${
+                                isSelected ? 'border-fala-blue scale-105 shadow-md' : 'border-transparent opacity-65 hover:opacity-100'
+                              }`}
+                              title={img.name}
+                            >
+                              <img src={img.dataUrl} alt={img.name} className="w-full h-full object-cover" />
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="grid grid-cols-1 gap-4">
                     <div className="space-y-1.5">
                       <label className="font-bold text-slate-300">Fala League Status</label>
                       <input
@@ -1210,6 +1465,70 @@ export default function AdminPanel({ players, owners, bids, auctionState, onLogo
                         className="w-full px-3 py-2 bg-black/40 border border-white/10 focus:border-blue-500 rounded-xl text-xs focus:outline-none transition-all text-slate-100"
                       />
                     </div>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="font-bold text-slate-300">Player Comments / About</label>
+                    <textarea
+                      value={editComments}
+                      onChange={(e) => setEditComments(e.target.value)}
+                      placeholder="Add fun details, playstyle, or achievements about this athlete..."
+                      rows={2}
+                      className="w-full px-3 py-2 bg-black/40 border border-white/10 focus:border-blue-500 rounded-xl text-xs focus:outline-none transition-all text-slate-100 resize-none"
+                    />
+                  </div>
+
+                  {/* Direct Assignment & Corrective Controls */}
+                  <div className="border-t border-white/5 pt-3 grid grid-cols-1 md:grid-cols-3 gap-3 bg-black/20 p-3 rounded-2xl border border-white/5">
+                    <div className="space-y-1.5">
+                      <label className="font-bold text-slate-300">Auction Status</label>
+                      <select
+                        value={editStatus}
+                        onChange={(e) => {
+                          const val = e.target.value as any;
+                          setEditStatus(val);
+                          if (val !== 'SOLD') {
+                            setEditOwnerId('');
+                            setEditWinningBid(0);
+                          }
+                        }}
+                        className="w-full px-3 py-2 bg-[#0a0a0a] border border-white/10 focus:border-blue-500 rounded-xl text-xs focus:outline-none transition-all text-slate-200 font-bold"
+                      >
+                        <option value="AVAILABLE">AVAILABLE</option>
+                        <option value="UNSOLD">UNSOLD</option>
+                        <option value="SOLD">SOLD</option>
+                      </select>
+                    </div>
+
+                    {editStatus === 'SOLD' && (
+                      <>
+                        <div className="space-y-1.5 col-span-1">
+                          <label className="font-bold text-slate-300">Winning Team</label>
+                          <select
+                            value={editOwnerId}
+                            onChange={(e) => setEditOwnerId(e.target.value)}
+                            className="w-full px-3 py-2 bg-[#0a0a0a] border border-white/10 focus:border-blue-500 rounded-xl text-xs focus:outline-none transition-all text-slate-200 font-bold"
+                          >
+                            <option value="">-- Select Team --</option>
+                            {owners.map(owner => (
+                              <option key={owner.id} value={owner.id}>{owner.name}</option>
+                            ))}
+                          </select>
+                        </div>
+
+                        <div className="space-y-1.5 col-span-1">
+                          <label className="font-bold text-slate-300">Winning Bid (Coins)</label>
+                          <input
+                            type="number"
+                            required
+                            min="0"
+                            value={editWinningBid}
+                            onChange={(e) => setEditWinningBid(Number(e.target.value))}
+                            className="w-full px-3 py-2 bg-[#0a0a0a] border border-white/10 focus:border-blue-500 rounded-xl text-xs focus:outline-none transition-all text-slate-100 font-mono"
+                          />
+                        </div>
+                      </>
+                    )}
                   </div>
 
                   {/* Sports Specific Ratings */}
@@ -1402,6 +1721,55 @@ export default function AdminPanel({ players, owners, bids, auctionState, onLogo
                         </div>
                       )}
                     </div>
+
+                    {/* Team Staff Dropdown Selection */}
+                    <div className="space-y-2 bg-black/20 p-2.5 rounded-xl border border-white/5 mb-4 text-[11px]">
+                      <div className="space-y-1">
+                        <label className="text-[9px] font-black uppercase tracking-wider text-slate-400 block">Select Owner Name</label>
+                        <select
+                          value={owner.ownerPlayerId || ''}
+                          onChange={async (e) => {
+                            const val = e.target.value || null;
+                            try {
+                              await updateOwnerTeamStaff(owner.id, val, owner.coOwnerPlayerId || null);
+                            } catch (err) {
+                              console.error('Failed to update team owner:', err);
+                            }
+                          }}
+                          className="w-full px-2 py-1 bg-[#0a0a0a] border border-white/10 rounded-lg text-slate-200 focus:outline-none cursor-pointer font-semibold"
+                        >
+                          <option value="">-- No Owner Assigned --</option>
+                          {players.map(p => (
+                            <option key={p.id} value={p.id}>
+                              {p.name} ({p.gender})
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+
+                      <div className="space-y-1">
+                        <label className="text-[9px] font-black uppercase tracking-wider text-slate-400 block">Select Co-Owner Name</label>
+                        <select
+                          value={owner.coOwnerPlayerId || ''}
+                          onChange={async (e) => {
+                            const val = e.target.value || null;
+                            try {
+                              await updateOwnerTeamStaff(owner.id, owner.ownerPlayerId || null, val);
+                            } catch (err) {
+                              console.error('Failed to update team co-owner:', err);
+                            }
+                          }}
+                          className="w-full px-2 py-1 bg-[#0a0a0a] border border-white/10 rounded-lg text-slate-200 focus:outline-none cursor-pointer font-semibold"
+                        >
+                          <option value="">-- No Co-Owner Assigned --</option>
+                          {players.map(p => (
+                            <option key={p.id} value={p.id}>
+                              {p.name} ({p.gender})
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
                   </div>
 
                   <div>
@@ -1569,7 +1937,7 @@ export default function AdminPanel({ players, owners, bids, auctionState, onLogo
               )}
 
               <form onSubmit={handleAddPlayerSubmit} className="space-y-4">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 gap-4">
                   <div className="space-y-1.5">
                     <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Full Name</label>
                     <input
@@ -1581,21 +1949,21 @@ export default function AdminPanel({ players, owners, bids, auctionState, onLogo
                     required
                   />
                 </div>
-
-
               </div>
 
-              <div className="space-y-1.5">
-                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Skill Rating (1-100)</label>
-                <input
-                  type="number"
-                  value={playerSkillRating}
-                  onChange={(e) => setPlayerSkillRating(Number(e.target.value))}
-                  min={1}
-                  max={100}
-                  className="w-full px-4 py-2.5 bg-black/40 border border-white/10 focus:border-fala-blue rounded-xl text-sm text-slate-100 font-mono focus:outline-none transition-colors"
-                  required
-                />
+              <div className="grid grid-cols-1 gap-4">
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Skill Rating (1-100)</label>
+                  <input
+                    type="number"
+                    value={playerSkillRating}
+                    onChange={(e) => setPlayerSkillRating(Number(e.target.value))}
+                    min={1}
+                    max={100}
+                    className="w-full px-4 py-2.5 bg-black/40 border border-white/10 focus:border-fala-blue rounded-xl text-sm text-slate-100 font-mono focus:outline-none transition-colors"
+                    required
+                  />
+                </div>
               </div>
 
               {/* Gender Selector */}
@@ -1629,7 +1997,7 @@ export default function AdminPanel({ players, owners, bids, auctionState, onLogo
 
               {/* Emoji Selector */}
               <div className="space-y-2">
-                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Avatar Emoji ({playerEmoji})</label>
+                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Avatar Emoji ({playerEmoji.startsWith('data:') ? 'Custom Photo' : playerEmoji})</label>
                 <div className="grid grid-cols-8 gap-2 p-3 bg-black/30 rounded-2xl border border-white/5">
                   {['📊', '🚀', '🎙️', '📥', '☕', '🌴', '💬', '🎨', '🥷', '🏓', '📚', '💻', '🧠', '👔', '📈', '🧙'].map((emo) => (
                     <button
@@ -1646,6 +2014,31 @@ export default function AdminPanel({ players, owners, bids, auctionState, onLogo
                 </div>
               </div>
 
+              {/* Gallery Image Selector */}
+              {galleryImages.length > 0 && (
+                <div className="space-y-2">
+                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Or Select Uploaded Photo</label>
+                  <div className="flex gap-2 p-3 bg-black/30 rounded-2xl border border-white/5 overflow-x-auto max-h-[110px]">
+                    {galleryImages.map((img) => {
+                      const isSelected = playerEmoji === img.dataUrl;
+                      return (
+                        <button
+                          key={img.id}
+                          type="button"
+                          onClick={() => setPlayerEmoji(img.dataUrl)}
+                          className={`relative flex-shrink-0 w-14 h-14 rounded-xl overflow-hidden border-2 transition-all hover:scale-105 active:scale-95 cursor-pointer ${
+                            isSelected ? 'border-fala-blue scale-105 shadow-md' : 'border-transparent opacity-60 hover:opacity-100'
+                          }`}
+                          title={img.name}
+                        >
+                          <img src={img.dataUrl} alt={img.name} className="w-full h-full object-cover" />
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
               {/* Fala League Field */}
               <div className="space-y-2">
                 <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Previous Fala League Status (Optional)</label>
@@ -1659,6 +2052,18 @@ export default function AdminPanel({ players, owners, bids, auctionState, onLogo
                   <option value="Second Place">Second Place 🥈</option>
                   <option value="Third Place">Third Place 🥉</option>
                 </select>
+              </div>
+
+              {/* Player Comments Field */}
+              <div className="space-y-2">
+                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Player Comments / Description</label>
+                <textarea
+                  value={playerComments}
+                  onChange={(e) => setPlayerComments(e.target.value)}
+                  placeholder="e.g. Speed merchant, strong badminton smasher, or key support player..."
+                  rows={2}
+                  className="w-full px-4 py-2.5 bg-black/40 border border-white/10 focus:border-fala-blue rounded-xl text-xs focus:outline-none placeholder:text-slate-600 transition-colors text-slate-100 resize-none"
+                />
               </div>
 
               {/* Stats sliders */}
@@ -1852,7 +2257,71 @@ export default function AdminPanel({ players, owners, bids, auctionState, onLogo
 
         </div>
 
+        {/* Team Owner Passwords Section */}
+        <div className="bg-[#121212] border border-white/10 p-6 rounded-3xl shadow-xl space-y-6">
+          <div className="flex items-center gap-2.5 pb-4 border-b border-white/5">
+            <div className="w-9 h-9 rounded-xl bg-fala-blue/10 text-fala-blue border border-fala-blue/20 flex items-center justify-center">
+              <Key className="w-5 h-5 text-fala-blue" />
+            </div>
+            <div>
+              <h2 className="text-base font-bold text-slate-100">Team Owner Passwords & Accounts</h2>
+              <p className="text-xs text-slate-400">Set custom access passwords for team owners to log in securely to their dashboards</p>
+            </div>
+          </div>
 
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {owners.map(owner => {
+              const hasPassword = !!owner.password;
+              const isVisible = !!passwordVisibility[owner.id];
+              
+              return (
+                <div key={owner.id} className="bg-black/30 p-4 rounded-2xl border border-white/5 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                  <div className="flex items-center gap-3">
+                    <div className="w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: owner.color }} />
+                    <div>
+                      <span className="text-sm font-bold text-slate-200 block">{owner.name}</span>
+                      <span className="text-[10px] text-slate-500 block">
+                        Status: {hasPassword ? (
+                          <span className="text-emerald-400 font-bold">● Password Active</span>
+                        ) : (
+                          <span className="text-fala-magenta font-bold">● Default Active ('1234')</span>
+                        )}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2 flex-1 md:max-w-[280px]">
+                    <div className="relative flex-1">
+                      <input
+                        type={isVisible ? "text" : "password"}
+                        value={passwordsState[owner.id] !== undefined ? passwordsState[owner.id] : (owner.password || '')}
+                        onChange={(e) => setPasswordsState({ ...passwordsState, [owner.id]: e.target.value })}
+                        placeholder="Set custom password"
+                        className="w-full px-3 py-2 bg-[#0a0a0a] border border-white/10 focus:border-fala-blue rounded-xl text-xs text-slate-100 focus:outline-none transition-all pr-8"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setPasswordVisibility({ ...passwordVisibility, [owner.id]: !isVisible })}
+                        className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 cursor-pointer"
+                      >
+                        {isVisible ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                      </button>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => handleUpdateOwnerPasswordClick(owner.id, owner.name)}
+                      className="px-3 py-2 bg-fala-blue hover:bg-fala-blue/90 text-white rounded-xl text-xs font-bold transition-all cursor-pointer shadow flex items-center gap-1.5"
+                    >
+                      <CheckSquare className="w-3.5 h-3.5" />
+                      Save
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
 
         {/* CSV Players Bulk Upload Section */}
         <div className="bg-[#121212] border border-white/10 p-6 rounded-3xl shadow-xl space-y-6">
@@ -1964,7 +2433,6 @@ export default function AdminPanel({ players, owners, bids, auctionState, onLogo
                           <th className="p-2.5">Name</th>
                           <th className="p-2.5">Gender</th>
                           <th className="p-2.5">Role</th>
-                          <th className="p-2.5 text-right">Base Price</th>
                           <th className="p-2.5 text-right">Skill</th>
                         </tr>
                       </thead>
@@ -1988,7 +2456,6 @@ export default function AdminPanel({ players, owners, bids, auctionState, onLogo
                               {p.gender === 'Female' ? '👩 Female' : '👨 Male'}
                             </td>
                             <td className="p-2.5 text-slate-400">{p.role}</td>
-                            <td className="p-2.5 text-right font-mono text-fala-magenta font-semibold">🪙 {p.basePrice.toLocaleString()}</td>
                             <td className="p-2.5 text-right font-mono text-emerald-400 font-semibold">{p.skillRating}</td>
                           </tr>
                         ))}
@@ -2011,6 +2478,208 @@ export default function AdminPanel({ players, owners, bids, auctionState, onLogo
 
       </div>
       )}
+
+      {activeTab === 'gallery' && (
+        <div className="space-y-6">
+          <div className="bg-[#121212] border border-white/10 p-6 rounded-3xl shadow-xl space-y-6">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-white/5">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-xl bg-fala-blue/10 text-fala-blue border border-fala-blue/20 flex items-center justify-center">
+                  <Upload className="w-5 h-5 text-fala-blue" />
+                </div>
+                <div>
+                  <h2 className="text-base font-bold text-slate-100">Upload Images to Gallery</h2>
+                  <p className="text-xs text-slate-400">Add custom base64 photo avatars to the tournament database library</p>
+                </div>
+              </div>
+
+              {galleryImages.length > 0 && (
+                <button
+                  type="button"
+                  onClick={handleAutoLinkPhotos}
+                  disabled={resetting || galleryUploading}
+                  className="px-4 py-2 bg-gradient-to-r from-fala-magenta to-fala-blue hover:opacity-90 disabled:opacity-50 text-white rounded-xl text-xs font-black uppercase tracking-wider transition-all cursor-pointer shadow flex items-center justify-center gap-1.5 self-start sm:self-center"
+                >
+                  <Sparkles className="w-4 h-4 animate-pulse" />
+                  Auto-Link to Players ({players.length})
+                </button>
+              )}
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div className="md:col-span-1 space-y-4">
+                <div className="bg-black/30 p-4 rounded-2xl border border-white/5 space-y-3 text-xs text-slate-400">
+                  <h3 className="text-xs font-bold text-slate-300 uppercase tracking-wider">How to Use & Auto-Link</h3>
+                  <p className="leading-relaxed">
+                    ● <strong className="text-slate-300">Bulk Upload:</strong> You can select multiple images at once to upload them in bulk!
+                  </p>
+                  <p className="leading-relaxed">
+                    ● <strong className="text-slate-300">File Naming:</strong> Name your image files exactly after your players (e.g. <code className="text-fala-magenta font-semibold">John Doe.jpg</code>).
+                  </p>
+                  <p className="leading-relaxed">
+                    ● <strong className="text-slate-300">Auto-Matching:</strong> Click the <strong className="text-fala-blue font-bold">Auto-Link to Players</strong> button to bind all gallery photos to matching player names automatically!
+                  </p>
+                  <p className="leading-relaxed">
+                    ● <strong className="text-slate-300">Size Limit:</strong> Max size per image is <strong className="text-amber-400">800 KB</strong> to protect database performance.
+                  </p>
+                </div>
+
+                {/* Image Upload Dropzone */}
+                <div className="relative border-2 border-dashed border-white/10 hover:border-fala-blue/40 rounded-3xl p-8 transition-all bg-black/20 flex flex-col items-center justify-center text-center group">
+                  <input
+                    type="file"
+                    accept="image/*"
+                    multiple
+                    onChange={async (e) => {
+                      const files = e.target.files;
+                      if (!files || files.length === 0) return;
+                      
+                      setGalleryUploading(true);
+                      const totalFiles = files.length;
+                      let successCount = 0;
+                      let errorCount = 0;
+                      
+                      for (let i = 0; i < totalFiles; i++) {
+                        const file = files[i];
+                        if (file.size > 800000) {
+                          alert(`Image "${file.name}" is over 800KB and was skipped! Please compress or crop it first.`);
+                          errorCount++;
+                          continue;
+                        }
+                        
+                        setBulkUploadStatus({
+                          current: i + 1,
+                          total: totalFiles,
+                          msg: `Uploading "${file.name}"...`
+                        });
+                        
+                        try {
+                          await new Promise<void>((resolve, reject) => {
+                            const reader = new FileReader();
+                            reader.onload = async () => {
+                              try {
+                                const base64 = reader.result as string;
+                                const defaultName = file.name.replace(/\.[^/.]+$/, "");
+                                await addGalleryImage(defaultName.trim(), base64);
+                                successCount++;
+                                resolve();
+                              } catch (err) {
+                                reject(err);
+                              }
+                            };
+                            reader.onerror = () => reject(new Error("File read error"));
+                            reader.readAsDataURL(file);
+                          });
+                        } catch (err) {
+                          console.error(`Failed to upload ${file.name}:`, err);
+                          errorCount++;
+                        }
+                      }
+                      
+                      setGalleryUploading(false);
+                      setBulkUploadStatus(null);
+                      
+                      if (successCount > 0) {
+                        alert(`Successfully uploaded ${successCount} out of ${totalFiles} images to the gallery! 🎉${errorCount > 0 ? ` (${errorCount} failed/skipped)` : ''}`);
+                      } else {
+                        alert("No images were successfully uploaded.");
+                      }
+                    }}
+                    disabled={galleryUploading}
+                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                  />
+                  <div className="w-12 h-12 rounded-2xl bg-fala-blue/10 text-fala-blue border border-fala-blue/20 flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
+                    {galleryUploading ? (
+                      <RefreshCw className="w-6 h-6 animate-spin" />
+                    ) : (
+                      <Upload className="w-6 h-6" />
+                    )}
+                  </div>
+                  <p className="text-sm font-bold text-slate-200">
+                    {galleryUploading ? "Uploading bulk..." : "Select Profile Photos"}
+                  </p>
+                  <p className="text-xs text-slate-500 mt-1">supports multi-select / jpg, png, webp, gif</p>
+                </div>
+
+                {bulkUploadStatus && (
+                  <div className="p-3 bg-fala-blue/10 border border-fala-blue/20 rounded-2xl text-center space-y-1.5 animate-pulse">
+                    <p className="text-xs font-bold text-slate-200">
+                      Processing Images ({bulkUploadStatus.current} / {bulkUploadStatus.total})
+                    </p>
+                    <div className="w-full bg-black/40 h-2 rounded-full overflow-hidden">
+                      <div 
+                        className="bg-fala-blue h-full transition-all duration-300"
+                        style={{ width: `${(bulkUploadStatus.current / bulkUploadStatus.total) * 100}%` }}
+                      />
+                    </div>
+                    <p className="text-[10px] text-slate-400 font-mono truncate">{bulkUploadStatus.msg}</p>
+                  </div>
+                )}
+              </div>
+
+              {/* Gallery Images List */}
+              <div className="md:col-span-2 space-y-4">
+                <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider">
+                  Stored Photos Library ({galleryImages.length})
+                </h3>
+
+                {galleryImages.length > 0 ? (
+                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 max-h-[500px] overflow-y-auto p-1.5 border border-white/5 bg-black/10 rounded-2xl">
+                    {galleryImages.map((image) => (
+                      <div 
+                        key={image.id} 
+                        className="bg-black/30 border border-white/10 hover:border-white/20 rounded-2xl p-3 flex flex-col justify-between items-center text-center gap-3 relative group"
+                      >
+                        <img 
+                          src={image.dataUrl} 
+                          alt={image.name} 
+                          referrerPolicy="no-referrer"
+                          className="w-20 h-20 rounded-2xl object-cover bg-slate-900 border border-white/10"
+                        />
+                        <div className="w-full space-y-0.5">
+                          <p className="text-xs font-black text-slate-200 truncate px-1" title={image.name}>
+                            {image.name}
+                          </p>
+                          <p className="text-[9px] text-slate-500 uppercase font-mono">
+                            {((image.dataUrl.length * 3) / 4 / 1024).toFixed(1)} KB
+                          </p>
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={async () => {
+                            if (confirm(`Are you sure you want to delete "${image.name}" from the database gallery?`)) {
+                              try {
+                                await deleteGalleryImage(image.id);
+                              } catch (err) {
+                                console.error(err);
+                                alert("Failed to delete image.");
+                              }
+                            }
+                          }}
+                          className="absolute top-2 right-2 p-1.5 bg-rose-950/80 hover:bg-rose-600 border border-rose-900/40 hover:border-rose-500 text-rose-400 hover:text-white rounded-lg transition-all opacity-0 group-hover:opacity-100 cursor-pointer"
+                          title="Delete photo"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="h-[250px] border border-dashed border-white/5 bg-black/10 rounded-3xl flex flex-col items-center justify-center text-center p-6 text-slate-600">
+                    <Layers className="w-8 h-8 mb-2 opacity-20" />
+                    <p className="text-xs font-semibold">Image library is empty</p>
+                    <p className="text-[11px] mt-1 max-w-sm">
+                      Upload photos in the left panel. Once uploaded, you will be able to select them instantly for any competitor's profile!
+                    </p>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }
