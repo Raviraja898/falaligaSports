@@ -1,7 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { Player, Owner, Bid, AuctionState } from '../types';
-import { collection, onSnapshot } from 'firebase/firestore';
-import { db } from '../firebase';
 import { 
   seedDatabase, 
   setActivePlayer, 
@@ -236,16 +234,29 @@ export default function AdminPanel({ players, owners, bids, auctionState, onLogo
     }
   };
 
-  // Subscribe to gallery collection
+  // Subscribe to the local gallery snapshot.
   useEffect(() => {
-    const unsub = onSnapshot(collection(db, 'gallery'), (snap) => {
-      const list: any[] = [];
-      snap.forEach((doc) => {
-        list.push({ id: doc.id, ...doc.data() });
-      });
-      setGalleryImages(list.sort((a, b) => b.timestamp - a.timestamp));
-    });
-    return () => unsub();
+    const syncGalleryImages = () => {
+      if (typeof window === 'undefined') {
+        setGalleryImages([]);
+        return;
+      }
+
+      try {
+        const raw = window.localStorage.getItem('falaliga_gallery_images') || '[]';
+        const list = JSON.parse(raw) as any[];
+        setGalleryImages(list.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0)));
+      } catch (err) {
+        console.error('Failed to load local gallery images:', err);
+        setGalleryImages([]);
+      }
+    };
+
+    syncGalleryImages();
+    window.addEventListener('falaliga-local-data-updated', syncGalleryImages);
+    return () => {
+      window.removeEventListener('falaliga-local-data-updated', syncGalleryImages);
+    };
   }, []);
 
   // Password management states

@@ -1957,7 +1957,7 @@ export const INITIAL_PLAYERS: Player[] = [
     "skillRating": 80,
     "basePrice": 80000,
     "status": "AVAILABLE",
-    "photoUrl": "👤",
+    "photoUrl": "/player-images/Peethani_RaviRaja.jpeg",
     "gender": "Male",
     "falaLeague": "Yes",
     "stats": {

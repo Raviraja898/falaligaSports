@@ -1,5 +1,7 @@
 import { Player, Owner, AuctionState } from './types';
 
+export const LOCAL_DATA_VERSION = '2026-07-08-image-fix-v2';
+
 export const LOCAL_OWNERS: Owner[] = [
   {
     "id": "elite-eagle",
@@ -139,7 +141,7 @@ export const LOCAL_PLAYERS: Player[] = [
     "skillRating": 74,
     "basePrice": 74000,
     "status": "AVAILABLE",
-    "photoUrl": "/player-images/Akash Sharma 1.jpg",
+    "photoUrl": "/player-images/Akash Sharma.jpg",
     "stats": {
       "badminton": 70,
       "carroms": 95,
@@ -265,7 +267,7 @@ export const LOCAL_PLAYERS: Player[] = [
     "skillRating": 74,
     "basePrice": 74000,
     "status": "AVAILABLE",
-    "photoUrl": "/player-images/Deepak Kumar Pandit.jpg",
+    "photoUrl": "",
     "stats": {
       "badminton": 95,
       "carroms": 70,
@@ -337,7 +339,7 @@ export const LOCAL_PLAYERS: Player[] = [
     "skillRating": 43,
     "basePrice": 43000,
     "status": "AVAILABLE",
-    "photoUrl": "/player-images/Anupam Kumar.jpg",
+    "photoUrl": "/player-images/Anoop_Kumar_Mittapalli.jpeg",
     "stats": {
       "badminton": 40,
       "carroms": 40,
@@ -1375,13 +1377,13 @@ export const LOCAL_PLAYERS: Player[] = [
     "falaLeague": "No"
   },
   {
-    "id": "Sourav Kumar",
-    "name": "Sourav Kumar",
+    "id": "so",
+    "name": "So",
     "role": "Corporate Athlete",
     "skillRating": 58,
     "basePrice": 58000,
     "status": "AVAILABLE",
-    "photoUrl": "/player-images/Sourav_image_Sourav Kumar.jpg",
+    "photoUrl": "/player-images/Maqsood Desai.jpg",
     "stats": {
       "badminton": 40,
       "carroms": 70,
@@ -1533,7 +1535,7 @@ export const LOCAL_PLAYERS: Player[] = [
       "football": 0,
       "tt": 0
     },
-    "gender": "Female",
+    "gender": "Male",
     "falaLeague": "No"
   },
   {
@@ -1777,7 +1779,7 @@ export const LOCAL_PLAYERS: Player[] = [
     "skillRating": 46,
     "basePrice": 46000,
     "status": "AVAILABLE",
-    "photoUrl": "/player-images/Revathi Mallikarjun.jpeg",
+    "photoUrl": "",
     "stats": {
       "badminton": 40,
       "carroms": 40,
@@ -1813,7 +1815,7 @@ export const LOCAL_PLAYERS: Player[] = [
     "skillRating": 40,
     "basePrice": 40000,
     "status": "AVAILABLE",
-    "photoUrl": "/player-images/sush_Sushmitha M.png",
+    "photoUrl": "",
     "stats": {
       "badminton": 40,
       "carroms": 40,
@@ -1849,7 +1851,7 @@ export const LOCAL_PLAYERS: Player[] = [
     "skillRating": 24,
     "basePrice": 24000,
     "status": "AVAILABLE",
-    "photoUrl": "",
+    "photoUrl": "/player-images/Dharnendra L V.jpg",
     "stats": {
       "badminton": 40,
       "carroms": 40,
@@ -1857,7 +1859,7 @@ export const LOCAL_PLAYERS: Player[] = [
       "football": 0,
       "tt": 0
     },
-    "gender": "Female",
+    "gender": "Male",
     "falaLeague": "No"
   },
   {
@@ -1903,7 +1905,7 @@ export const LOCAL_PLAYERS: Player[] = [
     "skillRating": 40,
     "basePrice": 40000,
     "status": "AVAILABLE",
-    "photoUrl": "",
+    "photoUrl": "/player-images/Vishal Khanna S.jpeg",
     "stats": {
       "badminton": 40,
       "carroms": 40,
@@ -1957,7 +1959,7 @@ export const LOCAL_PLAYERS: Player[] = [
     "skillRating": 80,
     "basePrice": 80000,
     "status": "AVAILABLE",
-    "photoUrl": "/player-images/Keerthana B R.jpeg",
+    "photoUrl": "/player-images/Peethani_RaviRaja.jpeg",
     "stats": {
       "badminton": 95,
       "carroms": 70,
@@ -2101,7 +2103,7 @@ export const LOCAL_PLAYERS: Player[] = [
     "skillRating": 46,
     "basePrice": 46000,
     "status": "AVAILABLE",
-    "photoUrl": "/player-images/photo_Rohith H.jpg",
+    "photoUrl": "/player-images/Rohith H.jpg",
     "stats": {
       "badminton": 70,
       "carroms": 40,
@@ -2173,7 +2175,7 @@ export const LOCAL_PLAYERS: Player[] = [
     "skillRating": 52,
     "basePrice": 52000,
     "status": "AVAILABLE",
-    "photoUrl": "/player-images/Manshu Saingar.jpg",
+    "photoUrl": "",
     "stats": {
       "badminton": 40,
       "carroms": 70,
@@ -2220,8 +2222,19 @@ export const LOCAL_STORAGE_KEYS = {
   players: 'falaliga_local_players',
   owners: 'falaliga_local_owners',
   bids: 'falaliga_local_bids',
-  auction: 'falaliga_local_auction'
+  auction: 'falaliga_local_auction',
+  dataVersion: 'falaliga_local_data_version'
 };
+
+export function getStoredDataVersion(): string | null {
+  if (typeof window === 'undefined') return null;
+  return window.localStorage.getItem(LOCAL_STORAGE_KEYS.dataVersion);
+}
+
+export function setStoredDataVersion(version: string) {
+  if (typeof window === 'undefined') return;
+  window.localStorage.setItem(LOCAL_STORAGE_KEYS.dataVersion, version);
+}
 
 export function getStoredPlayers(): Player[] | null {
   if (typeof window === 'undefined') return null;

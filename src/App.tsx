@@ -20,22 +20,19 @@ const confetti = (options?: any) => {
   });
 };
 
-import { 
-  collection, 
-  onSnapshot, 
-  doc 
-} from 'firebase/firestore';
-import { db } from './firebase';
 import { Player, Owner, Bid, AuctionState } from './types';
 import { seedDatabase } from './dbHelper';
 import {
+  LOCAL_DATA_VERSION,
   LOCAL_PLAYERS,
   LOCAL_OWNERS,
   LOCAL_AUCTION_STATE,
+  getStoredDataVersion,
   getStoredPlayers,
   getStoredOwners,
   getStoredAuctionState,
   getStoredBids,
+  setStoredDataVersion,
   setStoredPlayers,
   setStoredOwners,
   setStoredAuctionState,
@@ -149,12 +146,15 @@ const getStableRandomValue = (id: string) => {
 
 export default function App() {
   const [role, setRole] = useState<'USER_SELECTION' | 'ADMIN' | 'OWNER'>('USER_SELECTION');
+  const currentLocalDataVersion = getStoredDataVersion();
   const [players, setPlayers] = useState<Player[]>(() => {
-    const storedPlayers = getStoredPlayers();
+    const useStoredData = currentLocalDataVersion === LOCAL_DATA_VERSION;
+    const storedPlayers = useStoredData ? getStoredPlayers() : null;
     return storedPlayers?.length ? storedPlayers : LOCAL_PLAYERS;
   });
   const [owners, setOwners] = useState<Owner[]>(() => {
-    const storedOwners = getStoredOwners();
+    const useStoredData = currentLocalDataVersion === LOCAL_DATA_VERSION;
+    const storedOwners = useStoredData ? getStoredOwners() : null;
     return storedOwners?.length ? storedOwners : LOCAL_OWNERS;
   });
   const [bids, setBids] = useState<Bid[]>(() => getStoredBids());
@@ -165,7 +165,8 @@ export default function App() {
   const [showcaseStatus, setShowcaseStatus] = useState<'ALL' | 'AVAILABLE' | 'SOLD' | 'UNSOLD'>('ALL');
   const [showcaseTeamFilter, setShowcaseTeamFilter] = useState<string>('ALL');
   const [auctionState, setAuctionState] = useState<AuctionState>(() => {
-    const storedAuctionState = getStoredAuctionState();
+    const useStoredData = currentLocalDataVersion === LOCAL_DATA_VERSION;
+    const storedAuctionState = useStoredData ? getStoredAuctionState() : null;
     return storedAuctionState || LOCAL_AUCTION_STATE;
   });
 
@@ -206,111 +207,67 @@ export default function App() {
   const [dbEmpty, setDbEmpty] = useState<boolean>(false);
   const [initializing, setInitializing] = useState<boolean>(false);
 
-  // Load local roster first, then sync with Firestore when available
+  // Load the local roster and listen for local auction updates.
   useEffect(() => {
-    const localPlayers = getStoredPlayers();
-    const localOwners = getStoredOwners();
-    const localAuctionState = getStoredAuctionState();
-    const localBids = getStoredBids();
+    const syncFromLocalStorage = () => {
+      const useStoredData = getStoredDataVersion() === LOCAL_DATA_VERSION;
+      const localPlayers = useStoredData ? getStoredPlayers() : null;
+      const localOwners = useStoredData ? getStoredOwners() : null;
+      const localAuctionState = useStoredData ? getStoredAuctionState() : null;
+      const localBids = useStoredData ? getStoredBids() : [];
 
-    if (localPlayers?.length) {
-      const sortedPlayers = [...localPlayers].sort((a, b) => getStableRandomValue(a.id) - getStableRandomValue(b.id));
-      setPlayers(sortedPlayers);
-      setStoredPlayers(sortedPlayers);
-    } else {
-      const defaultPlayers = LOCAL_PLAYERS.map((player) => ({ ...player }));
-      const sortedPlayers = [...defaultPlayers].sort((a, b) => getStableRandomValue(a.id) - getStableRandomValue(b.id));
-      setPlayers(sortedPlayers);
-      setStoredPlayers(sortedPlayers);
-    }
+      if (useStoredData && localPlayers?.length) {
+        const sortedPlayers = [...localPlayers].sort((a, b) => getStableRandomValue(a.id) - getStableRandomValue(b.id));
+        setPlayers(sortedPlayers);
+        setStoredPlayers(sortedPlayers);
+      } else {
+        const defaultPlayers = LOCAL_PLAYERS.map((player) => ({ ...player }));
+        const sortedPlayers = [...defaultPlayers].sort((a, b) => getStableRandomValue(a.id) - getStableRandomValue(b.id));
+        setPlayers(sortedPlayers);
+        setStoredPlayers(sortedPlayers);
+      }
 
-    if (localOwners?.length) {
-      const sortedOwners = [...localOwners].sort((a, b) => a.name.localeCompare(b.name));
-      setOwners(sortedOwners);
-      setStoredOwners(sortedOwners);
-    } else {
-      const defaultOwners = LOCAL_OWNERS.map((owner) => ({ ...owner }));
-      const sortedOwners = [...defaultOwners].sort((a, b) => a.name.localeCompare(b.name));
-      setOwners(sortedOwners);
-      setStoredOwners(sortedOwners);
-    }
+      if (useStoredData && localOwners?.length) {
+        const sortedOwners = [...localOwners].sort((a, b) => a.name.localeCompare(b.name));
+        setOwners(sortedOwners);
+        setStoredOwners(sortedOwners);
+      } else {
+        const defaultOwners = LOCAL_OWNERS.map((owner) => ({ ...owner }));
+        const sortedOwners = [...defaultOwners].sort((a, b) => a.name.localeCompare(b.name));
+        setOwners(sortedOwners);
+        setStoredOwners(sortedOwners);
+      }
 
-    if (localAuctionState) {
-      setAuctionState(localAuctionState);
-      setStoredAuctionState(localAuctionState);
-    } else {
-      setAuctionState(LOCAL_AUCTION_STATE);
-      setStoredAuctionState(LOCAL_AUCTION_STATE);
-    }
+      if (useStoredData && localAuctionState) {
+        setAuctionState(localAuctionState);
+        setStoredAuctionState(localAuctionState);
+      } else {
+        setAuctionState(LOCAL_AUCTION_STATE);
+        setStoredAuctionState(LOCAL_AUCTION_STATE);
+      }
 
-    if (localBids?.length) {
-      setBids(localBids);
-      setStoredBids(localBids);
-    } else {
-      setBids([]);
-      setStoredBids([]);
-    }
+      if (useStoredData && localBids?.length) {
+        setBids(localBids);
+        setStoredBids(localBids);
+      } else {
+        setBids([]);
+        setStoredBids([]);
+      }
 
-    setDbEmpty(false);
-    setLoading(false);
-
-    // Keep Firestore as optional sync, but never block the local experience.
-    const unsubPlayers = onSnapshot(collection(db, 'players'), (snap) => {
-      const list: Player[] = [];
-      snap.forEach((doc) => {
-        list.push({ id: doc.id, ...doc.data() } as Player);
-      });
-      const sortedPlayers = list.sort((a, b) => getStableRandomValue(a.id) - getStableRandomValue(b.id));
-      setPlayers(sortedPlayers);
-      setStoredPlayers(sortedPlayers);
+      setStoredDataVersion(LOCAL_DATA_VERSION);
       setDbEmpty(false);
       setLoading(false);
-    }, (err) => {
-      console.error('Players listener error:', err);
-      setLoading(false);
-    });
+    };
 
-    const unsubOwners = onSnapshot(collection(db, 'owners'), (snap) => {
-      const list: Owner[] = [];
-      snap.forEach((doc) => {
-        list.push({ id: doc.id, ...doc.data() } as Owner);
-      });
-      const sortedOwners = list.sort((a, b) => a.name.localeCompare(b.name));
-      setOwners(sortedOwners);
-      setStoredOwners(sortedOwners);
-    }, (err) => {
-      console.error('Owners listener error:', err);
-    });
+    syncFromLocalStorage();
 
-    const unsubStatus = onSnapshot(doc(db, 'auction', 'status'), (snap) => {
-      if (snap.exists()) {
-        const data = snap.data() as AuctionState;
-        setAuctionState(data);
-        setStoredAuctionState(data);
-        if (data.lastSoldPlayerId !== undefined) {
-          setLastSoldPlayerId(data.lastSoldPlayerId);
-        }
-      }
-    }, (err) => {
-      console.error('Auction status listener error:', err);
-    });
+    const handleLocalDataUpdate = () => {
+      syncFromLocalStorage();
+    };
 
-    const unsubBids = onSnapshot(collection(db, 'bids'), (snap) => {
-      const list: Bid[] = [];
-      snap.forEach((doc) => {
-        list.push({ id: doc.id, ...doc.data() } as Bid);
-      });
-      setBids(list);
-      setStoredBids(list);
-    }, (err) => {
-      console.error('Bids listener error:', err);
-    });
-
+    window.addEventListener('falaliga-local-data-updated', handleLocalDataUpdate);
     return () => {
-      unsubPlayers();
-      unsubOwners();
-      unsubStatus();
-      unsubBids();
+      window.removeEventListener('falaliga-local-data-updated', handleLocalDataUpdate);
     };
   }, []);
 
@@ -509,6 +466,26 @@ export default function App() {
         {role === 'USER_SELECTION' && (
           <div className="space-y-12 animate-fade-in">
 
+            {/* Auction Welcome Section - shown when no active/recently sold player */}
+            {!activePlayer && !resolvedLastSoldPlayer && (
+              <div className="bg-gradient-to-r from-fala-magenta/10 to-fala-blue/10 border border-fala-magenta/30 rounded-3xl p-8 sm:p-12 text-center space-y-4">
+                <div className="text-5xl sm:text-6xl mb-4">🏟️</div>
+                <h2 className="text-3xl sm:text-4xl font-black text-white tracking-tight">Welcome to FALALIGA AUCTION 4.0</h2>
+                <p className="text-base text-slate-300 max-w-2xl mx-auto">The ultimate corporate championship draft arena. Watch elite players get auctioned to premium teams in real-time.</p>
+                <div className="flex flex-col sm:flex-row gap-3 justify-center pt-4">
+                  <div className="px-4 py-2 bg-fala-magenta/20 border border-fala-magenta/50 rounded-xl text-sm font-bold text-fala-magenta">
+                    📊 {players.length} Players Ready
+                  </div>
+                  <div className="px-4 py-2 bg-fala-blue/20 border border-fala-blue/50 rounded-xl text-sm font-bold text-fala-blue">
+                    🎯 {owners.length} Teams Competing
+                  </div>
+                  <div className="px-4 py-2 bg-amber-500/20 border border-amber-500/50 rounded-xl text-sm font-bold text-amber-400">
+                    🪙 1M Coin Budget Each
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* Active Live Bidding Showcase */}
             {activePlayer ? (
               <div className="bg-gradient-to-b from-[#111111] to-[#050505] border-2 border-fala-blue/30 p-8 rounded-3xl shadow-2xl relative overflow-hidden max-w-5xl mx-auto">
@@ -559,6 +536,15 @@ export default function App() {
                                 <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-[10px] font-extrabold uppercase tracking-widest bg-amber-500/10 text-amber-500 border border-amber-500/20">
                                   <Sparkles className="w-3.5 h-3.5" /> FALABELLA INTEGRATION ARENA
                                 </div>
+                                <button
+                                  onClick={() => {
+                                    setLastSoldPlayerId(null);
+                                    localStorage.removeItem('last_sold_player_id');
+                                  }}
+                                  className="mt-6 w-full py-3 bg-gradient-to-r from-fala-magenta to-fala-blue hover:from-fala-magenta/80 hover:to-fala-blue/80 text-white font-black uppercase tracking-wider rounded-xl transition-all shadow-lg"
+                                >
+                                  🔄 Back to Welcome Screen
+                                </button>
                               </div>
                             );
                           }
@@ -599,6 +585,16 @@ export default function App() {
                                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
                                 Ready for the next bidding cycle...
                               </div>
+
+                              <button
+                                onClick={() => {
+                                  setLastSoldPlayerId(null);
+                                  localStorage.removeItem('last_sold_player_id');
+                                }}
+                                className="mt-6 w-full py-3 bg-gradient-to-r from-fala-magenta to-fala-blue hover:from-fala-magenta/80 hover:to-fala-blue/80 text-white font-black uppercase tracking-wider rounded-xl transition-all shadow-lg"
+                              >
+                                🔄 Back to Welcome Screen
+                              </button>
                             </div>
                           );
                         })()}
