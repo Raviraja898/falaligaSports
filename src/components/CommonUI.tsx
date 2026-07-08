@@ -14,7 +14,7 @@ export function PlayerCard({ player, owners, isActive = false, isAuctionScreen =
   
   // Custom name-matching image state with automatic fallback progression
   const [imgSrc, setImgSrc] = React.useState<string | null>(() => {
-    if (player.photoUrl && player.photoUrl.startsWith('data:')) {
+    if (player.photoUrl && (player.photoUrl.startsWith('data:') || player.photoUrl.startsWith('/') || player.photoUrl.startsWith('http'))) {
       return player.photoUrl;
     }
     return `/player-images/${player.name}.jpg`;

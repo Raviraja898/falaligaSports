@@ -1526,7 +1526,7 @@ export const INITIAL_PLAYERS: Player[] = [
     "basePrice": 16000,
     "status": "AVAILABLE",
     "photoUrl": "https://falabella-my.sharepoint.com/personal/kumuda_bopaiah_falabella_cl1/Documents/Aplicaciones/Microsoft%20Forms/Register%20for%20participating%20in%20Falaliga%2040/Question/IMG_20260703_112054740~2_Shubhi%20Goyal.jpg",
-    "gender": "Male",
+    "gender": "Female",
     "falaLeague": "Yes",
     "stats": {
       "badminton": 0,

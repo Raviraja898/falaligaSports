@@ -28,6 +28,19 @@ import {
 import { db } from './firebase';
 import { Player, Owner, Bid, AuctionState } from './types';
 import { seedDatabase } from './dbHelper';
+import {
+  LOCAL_PLAYERS,
+  LOCAL_OWNERS,
+  LOCAL_AUCTION_STATE,
+  getStoredPlayers,
+  getStoredOwners,
+  getStoredAuctionState,
+  getStoredBids,
+  setStoredPlayers,
+  setStoredOwners,
+  setStoredAuctionState,
+  setStoredBids
+} from './localData';
 import AdminPanel from './components/AdminPanel';
 import OwnerDashboard from './components/OwnerDashboard';
 import AdminLogin from './components/AdminLogin';
@@ -136,20 +149,24 @@ const getStableRandomValue = (id: string) => {
 
 export default function App() {
   const [role, setRole] = useState<'USER_SELECTION' | 'ADMIN' | 'OWNER'>('USER_SELECTION');
-  const [players, setPlayers] = useState<Player[]>([]);
-  const [owners, setOwners] = useState<Owner[]>([]);
-  const [bids, setBids] = useState<Bid[]>([]);
+  const [players, setPlayers] = useState<Player[]>(() => {
+    const storedPlayers = getStoredPlayers();
+    return storedPlayers?.length ? storedPlayers : LOCAL_PLAYERS;
+  });
+  const [owners, setOwners] = useState<Owner[]>(() => {
+    const storedOwners = getStoredOwners();
+    return storedOwners?.length ? storedOwners : LOCAL_OWNERS;
+  });
+  const [bids, setBids] = useState<Bid[]>(() => getStoredBids());
   
   // Home page showcase state
   const [showcaseSearch, setShowcaseSearch] = useState('');
   const [showcaseGender, setShowcaseGender] = useState<'ALL' | 'Female' | 'Male'>('ALL');
   const [showcaseStatus, setShowcaseStatus] = useState<'ALL' | 'AVAILABLE' | 'SOLD' | 'UNSOLD'>('ALL');
   const [showcaseTeamFilter, setShowcaseTeamFilter] = useState<string>('ALL');
-  const [auctionState, setAuctionState] = useState<AuctionState>({
-    activePlayerId: null,
-    status: 'IDLE',
-    tiedOwners: [],
-    originalWinningAmount: 0
+  const [auctionState, setAuctionState] = useState<AuctionState>(() => {
+    const storedAuctionState = getStoredAuctionState();
+    return storedAuctionState || LOCAL_AUCTION_STATE;
   });
 
   // Celebration states
@@ -189,56 +206,104 @@ export default function App() {
   const [dbEmpty, setDbEmpty] = useState<boolean>(false);
   const [initializing, setInitializing] = useState<boolean>(false);
 
-  // Subscribe to real-time Firestore updates
+  // Load local roster first, then sync with Firestore when available
   useEffect(() => {
-    // 1. Players subscription
+    const localPlayers = getStoredPlayers();
+    const localOwners = getStoredOwners();
+    const localAuctionState = getStoredAuctionState();
+    const localBids = getStoredBids();
+
+    if (localPlayers?.length) {
+      const sortedPlayers = [...localPlayers].sort((a, b) => getStableRandomValue(a.id) - getStableRandomValue(b.id));
+      setPlayers(sortedPlayers);
+      setStoredPlayers(sortedPlayers);
+    } else {
+      const defaultPlayers = LOCAL_PLAYERS.map((player) => ({ ...player }));
+      const sortedPlayers = [...defaultPlayers].sort((a, b) => getStableRandomValue(a.id) - getStableRandomValue(b.id));
+      setPlayers(sortedPlayers);
+      setStoredPlayers(sortedPlayers);
+    }
+
+    if (localOwners?.length) {
+      const sortedOwners = [...localOwners].sort((a, b) => a.name.localeCompare(b.name));
+      setOwners(sortedOwners);
+      setStoredOwners(sortedOwners);
+    } else {
+      const defaultOwners = LOCAL_OWNERS.map((owner) => ({ ...owner }));
+      const sortedOwners = [...defaultOwners].sort((a, b) => a.name.localeCompare(b.name));
+      setOwners(sortedOwners);
+      setStoredOwners(sortedOwners);
+    }
+
+    if (localAuctionState) {
+      setAuctionState(localAuctionState);
+      setStoredAuctionState(localAuctionState);
+    } else {
+      setAuctionState(LOCAL_AUCTION_STATE);
+      setStoredAuctionState(LOCAL_AUCTION_STATE);
+    }
+
+    if (localBids?.length) {
+      setBids(localBids);
+      setStoredBids(localBids);
+    } else {
+      setBids([]);
+      setStoredBids([]);
+    }
+
+    setDbEmpty(false);
+    setLoading(false);
+
+    // Keep Firestore as optional sync, but never block the local experience.
     const unsubPlayers = onSnapshot(collection(db, 'players'), (snap) => {
       const list: Player[] = [];
       snap.forEach((doc) => {
         list.push({ id: doc.id, ...doc.data() } as Player);
       });
-      // Sort deterministically randomized using the stable hash function
-      setPlayers(list.sort((a, b) => getStableRandomValue(a.id) - getStableRandomValue(b.id)));
-      
-      if (snap.empty) {
-        setDbEmpty(false); // Disable forced seeding UI so players can be freely deleted and manually added/uploaded
-      } else {
-        setDbEmpty(false);
-      }
+      const sortedPlayers = list.sort((a, b) => getStableRandomValue(a.id) - getStableRandomValue(b.id));
+      setPlayers(sortedPlayers);
+      setStoredPlayers(sortedPlayers);
+      setDbEmpty(false);
       setLoading(false);
     }, (err) => {
       console.error('Players listener error:', err);
       setLoading(false);
     });
 
-    // 2. Owners subscription
     const unsubOwners = onSnapshot(collection(db, 'owners'), (snap) => {
       const list: Owner[] = [];
       snap.forEach((doc) => {
         list.push({ id: doc.id, ...doc.data() } as Owner);
       });
-      // Sort by name
-      setOwners(list.sort((a, b) => a.name.localeCompare(b.name)));
+      const sortedOwners = list.sort((a, b) => a.name.localeCompare(b.name));
+      setOwners(sortedOwners);
+      setStoredOwners(sortedOwners);
+    }, (err) => {
+      console.error('Owners listener error:', err);
     });
 
-    // 3. Auction Status subscription
     const unsubStatus = onSnapshot(doc(db, 'auction', 'status'), (snap) => {
       if (snap.exists()) {
         const data = snap.data() as AuctionState;
         setAuctionState(data);
+        setStoredAuctionState(data);
         if (data.lastSoldPlayerId !== undefined) {
           setLastSoldPlayerId(data.lastSoldPlayerId);
         }
       }
+    }, (err) => {
+      console.error('Auction status listener error:', err);
     });
 
-    // 4. Bids subscription
     const unsubBids = onSnapshot(collection(db, 'bids'), (snap) => {
       const list: Bid[] = [];
       snap.forEach((doc) => {
         list.push({ id: doc.id, ...doc.data() } as Bid);
       });
       setBids(list);
+      setStoredBids(list);
+    }, (err) => {
+      console.error('Bids listener error:', err);
     });
 
     return () => {
@@ -248,6 +313,22 @@ export default function App() {
       unsubBids();
     };
   }, []);
+
+  useEffect(() => {
+    setStoredPlayers(players);
+  }, [players]);
+
+  useEffect(() => {
+    setStoredOwners(owners);
+  }, [owners]);
+
+  useEffect(() => {
+    setStoredAuctionState(auctionState);
+  }, [auctionState]);
+
+  useEffect(() => {
+    setStoredBids(bids);
+  }, [bids]);
 
   // Monitor players collection for new sales in real-time
   useEffect(() => {
