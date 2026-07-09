@@ -104,6 +104,7 @@ export async function setActivePlayer(playerId: string | null) {
     status: 'BIDDING',
     tiedOwners: [],
     originalWinningAmount: 0,
+    lastSoldPlayerId: null,
   });
 }
 

@@ -760,40 +760,6 @@ export default function AdminPanel({ players, owners, bids, auctionState, onLogo
     }
   };
 
-  // Auto random mode driver effect
-  useEffect(() => {
-    if (auctionState.autoRandomMode && auctionState.status === 'IDLE' && !auctionState.activePlayerId) {
-      const remainingPlayers = players.filter(p => 
-        (p.status === 'AVAILABLE' || p.status === 'UNSOLD') && 
-        !staffPlayerIds.has(p.id)
-      );
-      
-      if (remainingPlayers.length > 0) {
-        const randomIndex = Math.floor(Math.random() * remainingPlayers.length);
-        const randomPlayer = remainingPlayers[randomIndex];
-        
-        const timer = setTimeout(async () => {
-          try {
-            await setActivePlayer(randomPlayer.id);
-          } catch (err) {
-            console.error('Error auto-starting next random player:', err);
-          }
-        }, 5000);
-        
-        return () => clearTimeout(timer);
-      } else {
-        const disableAuto = async () => {
-          try {
-            await setAutoRandomMode(false);
-          } catch (err) {
-            console.error('Error disabling auto random mode:', err);
-          }
-        };
-        disableAuto();
-      }
-    }
-  }, [auctionState.autoRandomMode, auctionState.status, auctionState.activePlayerId, players]);
-
   // Staff Player IDs (Team Owners and Co-Owners) that should be excluded from bidding
   const staffPlayerIds = new Set(
     owners

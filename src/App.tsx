@@ -21,7 +21,7 @@ const confetti = (options?: any) => {
 };
 
 import { Player, Owner, Bid, AuctionState } from './types';
-import { seedDatabase } from './dbHelper';
+import { seedDatabase, setActivePlayer, setAutoRandomMode } from './dbHelper';
 import {
   LOCAL_DATA_VERSION,
   LOCAL_PLAYERS,
@@ -191,7 +191,68 @@ export default function App() {
   });
 
   const activePlayer = players.find(p => p.id === auctionState.activePlayerId);
-  const resolvedLastSoldPlayer = players.find(p => p.id === lastSoldPlayerId) || lastSoldPlayer;
+  const resolvedLastSoldPlayer = players.find(p => p.id === (auctionState.lastSoldPlayerId || lastSoldPlayerId)) || lastSoldPlayer;
+
+  const staffPlayerIds = new Set(
+    owners
+      .map(o => [o.ownerPlayerId, o.coOwnerPlayerId])
+      .flat()
+      .filter(Boolean) as string[]
+  );
+
+  useEffect(() => {
+    if (auctionState.lastSoldPlayerId) {
+      setLastSoldPlayerId(auctionState.lastSoldPlayerId);
+      localStorage.setItem('last_sold_player_id', auctionState.lastSoldPlayerId);
+      const soldPlayer = players.find(p => p.id === auctionState.lastSoldPlayerId);
+      if (soldPlayer) {
+        setLastSoldPlayer(soldPlayer);
+      }
+      return;
+    }
+
+    setLastSoldPlayer(null);
+    setLastSoldPlayerId(null);
+    localStorage.removeItem('last_sold_player_id');
+  }, [auctionState.lastSoldPlayerId, players]);
+
+  useEffect(() => {
+    if (auctionState.activePlayerId) {
+      setLastSoldPlayer(null);
+      setLastSoldPlayerId(null);
+      localStorage.removeItem('last_sold_player_id');
+    }
+  }, [auctionState.activePlayerId]);
+
+  useEffect(() => {
+    if (!auctionState.autoRandomMode || auctionState.status !== 'IDLE' || auctionState.activePlayerId) {
+      return;
+    }
+
+    const remainingPlayers = players.filter(p =>
+      (p.status === 'AVAILABLE' || p.status === 'UNSOLD') &&
+      !staffPlayerIds.has(p.id)
+    );
+
+    if (remainingPlayers.length === 0) {
+      setAutoRandomMode(false).catch((err) => {
+        console.error('Failed to disable auto random mode:', err);
+      });
+      return;
+    }
+
+    const timer = setTimeout(async () => {
+      const randomIndex = Math.floor(Math.random() * remainingPlayers.length);
+      const randomPlayer = remainingPlayers[randomIndex];
+      try {
+        await setActivePlayer(randomPlayer.id);
+      } catch (err) {
+        console.error('Error auto-starting next random player:', err);
+      }
+    }, 5000);
+
+    return () => clearTimeout(timer);
+  }, [auctionState.autoRandomMode, auctionState.status, auctionState.activePlayerId, players, owners]);
 
   const handleSelectOwner = (id: string | null) => {
     setSelectedOwnerId(id);
@@ -266,8 +327,10 @@ export default function App() {
     };
 
     window.addEventListener('falaliga-local-data-updated', handleLocalDataUpdate);
+    window.addEventListener('storage', handleLocalDataUpdate);
     return () => {
       window.removeEventListener('falaliga-local-data-updated', handleLocalDataUpdate);
+      window.removeEventListener('storage', handleLocalDataUpdate);
     };
   }, []);
 
